@@ -18,8 +18,8 @@ The symbols shown below live in the extension's sub-packages:
 | Package | Import path | Provides |
 |---------|-------------|----------|
 | `ability` | `github.com/grandper/go-screenplay-etcd/ability` | `UseETCD`, `Key`, `ErrNoEndpointProvided`, `ErrFailedToConnect` |
-| `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
-| `put` | `github.com/grandper/go-screenplay-etcd/action/put` | `TheValue` |
+| `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrKeyAlreadyExists`, `ErrKeyModified` |
+| `put` | `github.com/grandper/go-screenplay-etcd/action/put` | `TheValue`, `TheValues` |
 | `remove` | `github.com/grandper/go-screenplay-etcd/action/remove` | `TheKey`, `TheKeys`, `TheKeysStartingWith` |
 | `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
 | `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey` |
@@ -135,6 +135,53 @@ If the value is a secret you do not want in the narration, mark the action secre
 err := anActor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").Secretly())
 err := anActor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").WhichShouldBeKeptSecret())
 // Alice attempts to put the value <secret> for the key "app/config/password"
+```
+
+### Putting several values at once
+Put several values, each for its key, with `put.TheValues`. They are put in one
+transaction, so the store never holds some of them without the others, and the narration
+lists them sorted by key:
+```go
+err := anActor.AttemptsTo(put.TheValues(map[string]string{
+    "app/config/database": "postgresql://localhost:5432",
+    "app/config/cache":    "redis://localhost:6379",
+}))
+// Alice attempts to put the values "app/config/cache" = "redis://localhost:6379", "app/config/database" = "postgresql://localhost:5432"
+```
+An empty map, or a map holding an empty key, is reported with `ErrKeyNotProvided`. The
+values can be kept secret the same way as a single one; the keys are still narrated:
+```go
+err := anActor.AttemptsTo(put.TheValues(credentials).Secretly())
+// Alice attempts to put the values <secret> for the keys "app/config/password", "app/config/username"
+```
+
+### Writing conditionally
+`put.TheValue` always overwrites the value a key holds. To initialize a key only when no
+one else did, close the statement with `IfTheKeyIsAbsent`: the check and the put happen
+in one transaction, and a key that exists makes the action fail with an error wrapping
+`ErrKeyAlreadyExists`, leaving the store untouched:
+```go
+err := anActor.AttemptsTo(put.TheValue("initial").ForTheKey("app/config/flag").IfTheKeyIsAbsent())
+// Alice attempts to put the value "initial" for the key "app/config/flag" if the key is absent
+// fails: the key "app/config/flag" already exists
+```
+To update a key only when nobody changed it since you read it, ask for its revision with
+`RevisionOfTheKey` (see below), then close the statement with
+`IfTheKeyIsUnchangedSinceTheRevision`. A key modified in between makes the action fail
+with an error wrapping `ErrKeyModified`, so a read-modify-write loop knows to read again:
+```go
+revision, _ := anActor.AsksFor(RevisionOfTheKey("app/config/counter"))
+
+err := anActor.AttemptsTo(put.TheValue("2").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(revision))
+// Alice attempts to put the value "2" for the key "app/config/counter" if the key is unchanged since the revision 42
+// fails: the key "app/config/counter" was modified since the revision 42
+```
+The revision zero means that the key must not exist, which is another way of saying
+`IfTheKeyIsAbsent`. The same condition closes `remove.TheKey`, with
+`IfUnchangedSinceTheRevision`:
+```go
+err := anActor.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(revision))
+// Alice attempts to remove the key "app/config/counter" if unchanged since the revision 42
 ```
 
 ### Removing keys

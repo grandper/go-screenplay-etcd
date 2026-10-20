@@ -110,6 +110,63 @@ func TestKeys(t *testing.T) {
 		assert.Equal(t, 2, number)
 	})
 
+	t.Run("puts a value only if the key is absent", func(t *testing.T) {
+		require.NoError(t, theAbility.ToRemove(t.Context(), "app/config/flag"))
+
+		succeeded, err := theAbility.ToPutIfAbsent(t.Context(), "app/config/flag", "initial")
+		require.NoError(t, err)
+		assert.True(t, succeeded)
+
+		succeeded, err = theAbility.ToPutIfAbsent(t.Context(), "app/config/flag", "other")
+		require.NoError(t, err)
+		assert.False(t, succeeded)
+		key, err := theAbility.ToRetrieveTheKey(t.Context(), "app/config/flag")
+		require.NoError(t, err)
+		assert.Equal(t, "initial", key.Value())
+	})
+
+	t.Run("puts a value only if the key is unchanged since a revision", func(t *testing.T) {
+		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/counter", "1"))
+		key, err := theAbility.ToRetrieveTheKey(t.Context(), "app/config/counter")
+		require.NoError(t, err)
+
+		succeeded, err := theAbility.ToPutIfUnchanged(t.Context(), "app/config/counter", "2", key.ModRevision())
+		require.NoError(t, err)
+		assert.True(t, succeeded)
+
+		succeeded, err = theAbility.ToPutIfUnchanged(t.Context(), "app/config/counter", "3", key.ModRevision())
+		require.NoError(t, err)
+		assert.False(t, succeeded)
+	})
+
+	t.Run("removes a key only if it is unchanged since a revision", func(t *testing.T) {
+		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/counter", "1"))
+		key, err := theAbility.ToRetrieveTheKey(t.Context(), "app/config/counter")
+		require.NoError(t, err)
+
+		succeeded, err := theAbility.ToRemoveIfUnchanged(t.Context(), "app/config/counter", key.ModRevision()-1)
+		require.NoError(t, err)
+		assert.False(t, succeeded)
+
+		succeeded, err = theAbility.ToRemoveIfUnchanged(t.Context(), "app/config/counter", key.ModRevision())
+		require.NoError(t, err)
+		assert.True(t, succeeded)
+	})
+
+	t.Run("puts several values in one transaction", func(t *testing.T) {
+		require.NoError(t, theAbility.ToRemoveTheKeysStartingWith(t.Context(), "app/"))
+
+		require.NoError(t, theAbility.ToPutTheValues(t.Context(), map[string]string{
+			"app/config/database": "postgresql://localhost:5432",
+			"app/config/cache":    "redis://localhost:6379",
+		}))
+
+		keys, err := theAbility.ToRetrieveTheKeysStartingWith(t.Context(), "app/config/")
+		require.NoError(t, err)
+		require.Len(t, keys, 2)
+		assert.Equal(t, keys[0].ModRevision(), keys[1].ModRevision())
+	})
+
 	t.Run("fails every operation when the actor does not have the ability", func(t *testing.T) {
 		noAbility := ability.TheAbilityOf(screenplay.ActorNamed("Bob"))
 
@@ -125,5 +182,16 @@ func TestKeys(t *testing.T) {
 		assert.Nil(t, keys)
 		_, err = noAbility.ToCountTheKeysStartingWith(t.Context(), "k")
 		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
+		_, err = noAbility.ToPutIfAbsent(t.Context(), "k", "v")
+		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
+		_, err = noAbility.ToPutIfUnchanged(t.Context(), "k", "v", 1)
+		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
+		_, err = noAbility.ToRemoveIfUnchanged(t.Context(), "k", 1)
+		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
+		require.ErrorIs(
+			t,
+			noAbility.ToPutTheValues(t.Context(), map[string]string{"k": "v"}),
+			screenplay.ErrActorMissingAbility,
+		)
 	})
 }

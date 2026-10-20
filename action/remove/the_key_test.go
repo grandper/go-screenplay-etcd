@@ -1,6 +1,7 @@
 package remove_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
@@ -14,6 +15,7 @@ import (
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 func TestTheKey(t *testing.T) {
@@ -45,6 +47,26 @@ func TestTheKey(t *testing.T) {
 			require.NoError(t, alice.AttemptsTo(remove.TheKey("does/not/exist")))
 		})
 
+		t.Run("only if unchanged since a revision", func(t *testing.T) {
+			require.NoError(t, alice.AttemptsTo(put.TheValue("1").ForTheKey("app/config/counter")))
+			revision, err := alice.AsksFor(question.RevisionOfTheKey("app/config/counter"))
+			require.NoError(t, err)
+			require.NoError(t, alice.AttemptsTo(put.TheValue("2").ForTheKey("app/config/counter")))
+
+			err = alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(revision))
+			require.ErrorIs(t, err, action.ErrKeyModified)
+			require.EqualError(t, err,
+				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, revision),
+			)
+			assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"))
+
+			require.NoError(
+				t,
+				alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(revision+1)),
+			)
+			etcdfixture.AssertKeyDoesNotExist(t, client, "app/config/counter")
+		})
+
 		t.Run("fails when the key is not provided", func(t *testing.T) {
 			err := alice.AttemptsTo(remove.TheKey(""))
 
@@ -70,5 +92,9 @@ func TestTheKey(t *testing.T) {
 
 	t.Run("implements the stringer interface", func(t *testing.T) {
 		assert.Equal(t, `remove the key "app/config/cache"`, remove.TheKey("app/config/cache").String())
+		assert.Equal(t,
+			`remove the key "app/config/cache" if unchanged since the revision 42`,
+			remove.TheKey("app/config/cache").IfUnchangedSinceTheRevision(42).String(),
+		)
 	})
 }

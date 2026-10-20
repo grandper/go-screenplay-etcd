@@ -12,4 +12,13 @@ var (
 	// with a prefix is performed with an empty prefix, which would reach every
 	// key of the store.
 	ErrPrefixNotProvided = errors.New("the prefix must be provided")
+
+	// ErrKeyAlreadyExists is wrapped by the error put.TheValue returns when the
+	// value was to be put only if the key was absent, and the key exists.
+	ErrKeyAlreadyExists = errors.New("already exists")
+
+	// ErrKeyModified is wrapped by the error put.TheValue and remove.TheKey
+	// return when the key was to be written only if it was unchanged since a
+	// revision, and it was modified.
+	ErrKeyModified = errors.New("was modified")
 )
