@@ -3,7 +3,9 @@ module github.com/grandper/go-screenplay-etcd
 go 1.27.2
 
 require (
+	github.com/grandper/go-screenplay/v2 v2.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
+	go.etcd.io/etcd/api/v3 v3.7.2
 	go.etcd.io/etcd/client/v3 v3.7.2
 	go.etcd.io/etcd/server/v3 v3.7.2
 )
@@ -23,6 +25,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/grandper/go-monad v1.0.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
@@ -39,7 +42,6 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 // indirect
 	github.com/xiang90/probing v0.0.0-20221125231312-a49e3df8f510 // indirect
 	go.etcd.io/bbolt v1.5.0 // indirect
-	go.etcd.io/etcd/api/v3 v3.7.2 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.7.2 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.7.2 // indirect
 	go.etcd.io/raft/v3 v3.7.0 // indirect
