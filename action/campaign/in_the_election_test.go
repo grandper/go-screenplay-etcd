@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grandper/go-screenplay-etcd/question/leader"
+
 	"github.com/grandper/go-screenplay/v2/action/see"
 	"github.com/grandper/go-screenplay/v2/resolution/be"
 	"github.com/grandper/go-screenplay/v2/screenplay"
@@ -17,7 +19,6 @@ import (
 	"github.com/grandper/go-screenplay-etcd/action/resign"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 func TestInTheElection(t *testing.T) {
@@ -38,7 +39,7 @@ func TestInTheElection(t *testing.T) {
 
 			require.NoError(
 				t,
-				alice.Should(see.The(question.LeaderOfTheElection("primary-worker")).Should(be.EqualTo("Alice"))),
+				alice.Should(see.The(leader.OfTheElection("primary-worker")).Should(be.EqualTo("Alice"))),
 			)
 		})
 
@@ -49,7 +50,7 @@ func TestInTheElection(t *testing.T) {
 
 			require.NoError(
 				t,
-				alice.Should(see.The(question.LeaderOfTheElection("backup-worker")).Should(be.EqualTo("node-1"))),
+				alice.Should(see.The(leader.OfTheElection("backup-worker")).Should(be.EqualTo("node-1"))),
 			)
 		})
 
@@ -75,7 +76,7 @@ func TestInTheElection(t *testing.T) {
 			}
 			require.NoError(
 				t,
-				bob.Should(see.The(question.LeaderOfTheElection("primary-worker")).Should(be.EqualTo("Bob"))),
+				bob.Should(see.The(leader.OfTheElection("primary-worker")).Should(be.EqualTo("Bob"))),
 			)
 		})
 

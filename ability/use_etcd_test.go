@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grandper/go-screenplay-etcd/question/value"
+
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +14,6 @@ import (
 	"github.com/grandper/go-screenplay-etcd/ability"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 func TestUseETCD(t *testing.T) {
@@ -26,9 +27,9 @@ func TestUseETCD(t *testing.T) {
 			alice.AttemptsTo(put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database")),
 		)
 
-		value, err := alice.AsksFor(question.ValueOfTheKey("app/config/database"))
+		theValue, err := alice.AsksFor(value.OfTheKey("app/config/database"))
 		require.NoError(t, err)
-		assert.Equal(t, "postgresql://localhost:5432", value)
+		assert.Equal(t, "postgresql://localhost:5432", theValue)
 	})
 
 	t.Run("reports a missing endpoint when the actor first uses the ability", func(t *testing.T) {
@@ -74,9 +75,9 @@ func TestUseETCD(t *testing.T) {
 		require.Len(t, response.Kvs, 1)
 		assert.Equal(t, "v1", string(response.Kvs[0].GetValue()))
 
-		value, err := alice.AsksFor(question.ValueOfTheKey("app/config/database"))
+		theValue, err := alice.AsksFor(value.OfTheKey("app/config/database"))
 		require.NoError(t, err)
-		assert.Equal(t, "v1", value)
+		assert.Equal(t, "v1", theValue)
 	})
 
 	t.Run("uses the client it is given", func(t *testing.T) {
@@ -118,9 +119,9 @@ func TestUseETCD(t *testing.T) {
 
 		require.NoError(t, alice.AttemptsTo(put.TheValue("v").ForTheKey("k")))
 
-		value, err := alice.AsksFor(question.ValueOfTheKey("k"))
+		theValue, err := alice.AsksFor(value.OfTheKey("k"))
 		require.NoError(t, err)
-		assert.Equal(t, "v", value)
+		assert.Equal(t, "v", theValue)
 	})
 
 	t.Run("fails to connect securely without the client certificate the server requires", func(t *testing.T) {

@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grandper/go-screenplay-etcd/question/key"
+	"github.com/grandper/go-screenplay-etcd/question/revision"
+
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	screenplayfixture "github.com/grandper/go-screenplay/v2/screenplay/fixture"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +19,6 @@ import (
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 func TestTheValue(t *testing.T) {
@@ -66,20 +68,20 @@ func TestTheValue(t *testing.T) {
 
 		t.Run("only if the key is unchanged since a revision", func(t *testing.T) {
 			require.NoError(t, alice.AttemptsTo(put.TheValue("1").ForTheKey("app/config/counter")))
-			revision, err := alice.AsksFor(question.RevisionOfTheKey("app/config/counter"))
+			theRevision, err := alice.AsksFor(revision.OfTheKey("app/config/counter"))
 			require.NoError(t, err)
 
 			require.NoError(t, alice.AttemptsTo(
-				put.TheValue("2").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(revision),
+				put.TheValue("2").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(theRevision),
 			))
 			assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"))
 
 			err = alice.AttemptsTo(
-				put.TheValue("3").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(revision),
+				put.TheValue("3").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(theRevision),
 			)
 			require.ErrorIs(t, err, action.ErrKeyModified)
 			require.EqualError(t, err,
-				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, revision),
+				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, theRevision),
 			)
 			assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"))
 		})
@@ -106,13 +108,13 @@ func TestTheValue(t *testing.T) {
 				alice.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(1).Second()),
 			)
 
-			key, err := alice.AsksFor(question.KeyNamed("locks/batch-job"))
+			theKey, err := alice.AsksFor(key.Named("locks/batch-job"))
 			require.NoError(t, err)
-			assert.True(t, key.Exists())
-			assert.NotZero(t, key.Lease())
+			assert.True(t, theKey.Exists())
+			assert.NotZero(t, theKey.Lease())
 
 			assert.Eventually(t, func() bool {
-				expired, askErr := alice.AsksFor(question.KeyNamed("locks/batch-job"))
+				expired, askErr := alice.AsksFor(key.Named("locks/batch-job"))
 
 				return askErr == nil && !expired.Exists()
 			}, 15*time.Second, 200*time.Millisecond, "the key should expire with its lease")
@@ -143,9 +145,9 @@ func TestTheValue(t *testing.T) {
 				put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(10).Seconds().IfTheKeyIsAbsent(),
 			))
 
-			key, err := alice.AsksFor(question.KeyNamed("locks/batch-job"))
+			theKey, err := alice.AsksFor(key.Named("locks/batch-job"))
 			require.NoError(t, err)
-			assert.NotZero(t, key.Lease())
+			assert.NotZero(t, theKey.Lease())
 			require.ErrorIs(
 				t,
 				alice.AttemptsTo(

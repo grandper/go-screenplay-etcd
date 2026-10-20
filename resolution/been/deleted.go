@@ -12,8 +12,8 @@ import (
 // the cause. Close it with ByTheExpiryOfItsLease to require the removal to be
 // caused by the expiry of the lease of the key:
 //
-//	see.The(last.Of(question.EventsOnTheKey("locks/batch-job"))).ShouldHave(been.Deleted())
-//	see.The(last.Of(question.EventsOnTheKey("locks/batch-job"))).ShouldHave(been.Deleted().ByTheExpiryOfItsLease())
+//	see.The(last.Of(events.OnTheKey("locks/batch-job"))).ShouldHave(been.Deleted())
+//	see.The(last.Of(events.OnTheKey("locks/batch-job"))).ShouldHave(been.Deleted().ByTheExpiryOfItsLease())
 //
 // A nil event is not a delete.
 func Deleted() *DeletedResolution {

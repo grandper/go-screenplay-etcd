@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/grandper/go-screenplay-etcd/question/revision"
+
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	screenplayfixture "github.com/grandper/go-screenplay/v2/screenplay/fixture"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +17,6 @@ import (
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 func TestTheKey(t *testing.T) {
@@ -49,20 +50,20 @@ func TestTheKey(t *testing.T) {
 
 		t.Run("only if unchanged since a revision", func(t *testing.T) {
 			require.NoError(t, alice.AttemptsTo(put.TheValue("1").ForTheKey("app/config/counter")))
-			revision, err := alice.AsksFor(question.RevisionOfTheKey("app/config/counter"))
+			theRevision, err := alice.AsksFor(revision.OfTheKey("app/config/counter"))
 			require.NoError(t, err)
 			require.NoError(t, alice.AttemptsTo(put.TheValue("2").ForTheKey("app/config/counter")))
 
-			err = alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(revision))
+			err = alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(theRevision))
 			require.ErrorIs(t, err, action.ErrKeyModified)
 			require.EqualError(t, err,
-				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, revision),
+				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, theRevision),
 			)
 			assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"))
 
 			require.NoError(
 				t,
-				alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(revision+1)),
+				alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(theRevision+1)),
 			)
 			etcdfixture.AssertKeyDoesNotExist(t, client, "app/config/counter")
 		})

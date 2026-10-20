@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grandper/go-screenplay-etcd/question/events"
+
 	"github.com/grandper/go-screenplay/v2/action/wait"
 	"github.com/grandper/go-screenplay/v2/resolution/length"
 	"github.com/grandper/go-screenplay/v2/screenplay"
@@ -17,7 +19,6 @@ import (
 	"github.com/grandper/go-screenplay-etcd/action/watch"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 func TestTheKeysStartingWith(t *testing.T) {
@@ -39,13 +40,13 @@ func TestTheKeysStartingWith(t *testing.T) {
 			))
 
 			require.NoError(t, alice.AttemptsTo(
-				wait.UntilThe(question.EventsOnTheKeysStartingWith("app/config/")).
+				wait.UntilThe(events.OnTheKeysStartingWith("app/config/")).
 					HappensToHave(length.Exactly[[]*ability.Event](2)),
 			))
-			events, err := alice.AsksFor(question.EventsOnTheKeysStartingWith("app/config/"))
+			theEvents, err := alice.AsksFor(events.OnTheKeysStartingWith("app/config/"))
 			require.NoError(t, err)
-			assert.Equal(t, "app/config/cache", events[0].Key())
-			assert.Equal(t, "app/config/database", events[1].Key())
+			assert.Equal(t, "app/config/cache", theEvents[0].Key())
+			assert.Equal(t, "app/config/database", theEvents[1].Key())
 		})
 
 		t.Run("fails when the prefix is already watched", func(t *testing.T) {

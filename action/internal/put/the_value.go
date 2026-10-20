@@ -67,7 +67,7 @@ func (a *TheValueAction) IfTheKeyIsAbsent() *TheValueAction {
 }
 
 // IfTheKeyIsUnchangedSinceTheRevision puts the value only when the key was not
-// modified since the revision, the one question.RevisionOfTheKey answered
+// modified since the revision, the one revision.OfTheKey answered
 // with; it reads "if the key is unchanged since the revision 42". The revision
 // zero means that the key must not exist. When the key was modified, the
 // action fails with an error wrapping action.ErrKeyModified and the store is

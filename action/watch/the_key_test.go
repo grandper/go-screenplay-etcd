@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grandper/go-screenplay-etcd/question/events"
+
 	"github.com/grandper/go-screenplay/v2/action/wait"
 	"github.com/grandper/go-screenplay/v2/resolution/length"
 	"github.com/grandper/go-screenplay/v2/screenplay"
@@ -18,7 +20,6 @@ import (
 	"github.com/grandper/go-screenplay-etcd/action/watch"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 func TestTheKey(t *testing.T) {
@@ -40,30 +41,30 @@ func TestTheKey(t *testing.T) {
 			))
 
 			require.NoError(t, alice.AttemptsTo(
-				wait.UntilThe(question.EventsOnTheKey("app/config/database")).
+				wait.UntilThe(events.OnTheKey("app/config/database")).
 					HappensToHave(length.Exactly[[]*ability.Event](3)),
 			))
-			events, err := alice.AsksFor(question.EventsOnTheKey("app/config/database"))
+			theEvents, err := alice.AsksFor(events.OnTheKey("app/config/database"))
 			require.NoError(t, err)
-			require.Len(t, events, 3)
+			require.Len(t, theEvents, 3)
 
-			assert.True(t, events[0].IsPut())
-			assert.Equal(t, "app/config/database", events[0].Key())
-			assert.Equal(t, "postgresql://localhost:5432", events[0].Value())
-			assert.Empty(t, events[0].PreviousValue())
-			assert.Equal(t, int64(1), events[0].Version())
+			assert.True(t, theEvents[0].IsPut())
+			assert.Equal(t, "app/config/database", theEvents[0].Key())
+			assert.Equal(t, "postgresql://localhost:5432", theEvents[0].Value())
+			assert.Empty(t, theEvents[0].PreviousValue())
+			assert.Equal(t, int64(1), theEvents[0].Version())
 
-			assert.True(t, events[1].IsPut())
-			assert.Equal(t, "postgresql://db.example.com:5432", events[1].Value())
-			assert.Equal(t, "postgresql://localhost:5432", events[1].PreviousValue())
-			assert.Equal(t, int64(2), events[1].Version())
-			assert.Greater(t, events[1].Revision(), events[0].Revision())
+			assert.True(t, theEvents[1].IsPut())
+			assert.Equal(t, "postgresql://db.example.com:5432", theEvents[1].Value())
+			assert.Equal(t, "postgresql://localhost:5432", theEvents[1].PreviousValue())
+			assert.Equal(t, int64(2), theEvents[1].Version())
+			assert.Greater(t, theEvents[1].Revision(), theEvents[0].Revision())
 
-			assert.True(t, events[2].IsDelete())
-			assert.False(t, events[2].IsPut())
-			assert.Empty(t, events[2].Value())
-			assert.Equal(t, "postgresql://db.example.com:5432", events[2].PreviousValue())
-			assert.False(t, events[2].CausedByLeaseExpiry())
+			assert.True(t, theEvents[2].IsDelete())
+			assert.False(t, theEvents[2].IsPut())
+			assert.Empty(t, theEvents[2].Value())
+			assert.Equal(t, "postgresql://db.example.com:5432", theEvents[2].PreviousValue())
+			assert.False(t, theEvents[2].CausedByLeaseExpiry())
 		})
 
 		t.Run("ignoring the changes made to other keys", func(t *testing.T) {
@@ -77,12 +78,12 @@ func TestTheKey(t *testing.T) {
 			))
 
 			require.NoError(t, alice.AttemptsTo(
-				wait.UntilThe(question.EventsOnTheKey("app/config/cache")).
+				wait.UntilThe(events.OnTheKey("app/config/cache")).
 					HappensToHave(length.Exactly[[]*ability.Event](1)),
 			))
-			events, err := alice.AsksFor(question.EventsOnTheKey("app/config/cache"))
+			theEvents, err := alice.AsksFor(events.OnTheKey("app/config/cache"))
 			require.NoError(t, err)
-			assert.Equal(t, "app/config/cache", events[0].Key())
+			assert.Equal(t, "app/config/cache", theEvents[0].Key())
 		})
 
 		t.Run("telling a removal caused by the expiry of a lease from a plain removal", func(t *testing.T) {
@@ -97,16 +98,16 @@ func TestTheKey(t *testing.T) {
 			))
 
 			require.NoError(t, alice.AttemptsTo(
-				wait.UntilThe(question.EventsOnTheKey("locks/batch-job")).
+				wait.UntilThe(events.OnTheKey("locks/batch-job")).
 					HappensToHave(length.Exactly[[]*ability.Event](2)),
-				wait.UntilThe(question.EventsOnTheKey("locks/nightly-job")).
+				wait.UntilThe(events.OnTheKey("locks/nightly-job")).
 					HappensToHave(length.Exactly[[]*ability.Event](2)),
 			))
-			expired, err := alice.AsksFor(question.EventsOnTheKey("locks/batch-job"))
+			expired, err := alice.AsksFor(events.OnTheKey("locks/batch-job"))
 			require.NoError(t, err)
 			assert.True(t, expired[1].IsDelete())
 			assert.True(t, expired[1].CausedByLeaseExpiry())
-			removed, err := alice.AsksFor(question.EventsOnTheKey("locks/nightly-job"))
+			removed, err := alice.AsksFor(events.OnTheKey("locks/nightly-job"))
 			require.NoError(t, err)
 			assert.True(t, removed[1].IsDelete())
 			assert.False(t, removed[1].CausedByLeaseExpiry())
@@ -140,7 +141,7 @@ func TestTheKey(t *testing.T) {
 
 		require.NoError(t, alice.Exit())
 
-		_, err := alice.AsksFor(question.EventsOnTheKey("app/config/database"))
+		_, err := alice.AsksFor(events.OnTheKey("app/config/database"))
 		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
 	})
 

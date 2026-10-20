@@ -26,7 +26,7 @@ type TheKeyAction struct {
 }
 
 // IfUnchangedSinceTheRevision removes the key only when it was not modified
-// since the revision, the one question.RevisionOfTheKey answered with; it
+// since the revision, the one revision.OfTheKey answered with; it
 // reads "if unchanged since the revision 42". When the key was modified, the
 // action fails with an error wrapping action.ErrKeyModified and the store is
 // left untouched.

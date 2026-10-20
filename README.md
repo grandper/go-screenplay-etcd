@@ -26,28 +26,48 @@ The symbols shown below live in the extension's sub-packages:
 | `release` | `github.com/grandper/go-screenplay-etcd/action/release` | `TheLock` |
 | `campaign` | `github.com/grandper/go-screenplay-etcd/action/campaign` | `InTheElection` |
 | `resign` | `github.com/grandper/go-screenplay-etcd/action/resign` | `FromTheElection` |
-| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `TimeToLiveOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `EventsOnTheKey`, `EventsOnTheKeysStartingWith`, `LeaderOfTheElection`, `StatusOfTheEndpoint`, `ActiveAlarms`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrNameNotProvided`, `ErrEndpointNotProvided` |
+| `question` | `github.com/grandper/go-screenplay-etcd/question` | `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrNameNotProvided`, `ErrEndpointNotProvided` |
+| `value` | `github.com/grandper/go-screenplay-etcd/question/value` | `OfTheKey` |
+| `key` | `github.com/grandper/go-screenplay-etcd/question/key` | `Named` |
+| `revision` | `github.com/grandper/go-screenplay-etcd/question/revision` | `OfTheKey` |
+| `ttl` | `github.com/grandper/go-screenplay-etcd/question/ttl` | `OfTheKey` |
+| `keys` | `github.com/grandper/go-screenplay-etcd/question/keys` | `StartingWith` |
+| `values` | `github.com/grandper/go-screenplay-etcd/question/values` | `OfTheKeysStartingWith` |
+| `events` | `github.com/grandper/go-screenplay-etcd/question/events` | `OnTheKey`, `OnTheKeysStartingWith` |
+| `leader` | `github.com/grandper/go-screenplay-etcd/question/leader` | `OfTheElection` |
+| `status` | `github.com/grandper/go-screenplay-etcd/question/status` | `OfTheEndpoint` |
+| `alarms` | `github.com/grandper/go-screenplay-etcd/question/alarms` | `OfTheCluster` |
 | `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey`, `CreateFakePutEvent`, `CreateFakeDeleteEvent`, `CreateFakeExpiryEvent`, `CreateFakeAlarm` |
-| `resolution` | `github.com/grandper/go-screenplay-etcd/resolution` | `Exist` |
+| `exist` | `github.com/grandper/go-screenplay-etcd/resolution/exist` | `InETCD` |
 | `been` | `github.com/grandper/go-screenplay-etcd/resolution/been` | `Put`, `Deleted` |
 | `fixture` | `github.com/grandper/go-screenplay-etcd/fixture` | `RunETCDServer`, `RunSecureETCDServer`, `ETCDServer` |
 
 Assertions are written with the core screenplay packages (`action/see`,
-`resolution/be`, `resolution/contain`, `resolution/length`, ...). The actions are written
-with their package, which is their verb: `put.TheValue(...)` reads "put the value". For
-readability the examples below drop the package qualifiers on the other extension
-constructors; import the packages above and qualify them as `ability.UseETCD()`, and so on.
-The extension's `question`, `resolution` and `fixture` packages share their names with
-core ones: when a file uses both, keep the core name and alias the extension package with
-the `etcd` prefix:
+`resolution/be`, `resolution/contain`, `resolution/length`, ...). Every statement is
+written with its packages, which are words of the sentence: the package of an action is
+its verb, `put.TheValue("ready").ForTheKey("app/status")` reads "put the value ready for
+the key app/status"; the package of a question is its first word,
+`value.OfTheKey("app/status")` reads "value of the key app/status"; and the package of a
+resolution is the word that follows the verb, `exist.InETCD()` reads "exist in etcd"
+after `Should`. Read aloud, a whole statement is one English sentence, which is what the
+actor narrates:
+```go
+err := anActor.Should(see.The(value.OfTheKey("app/status")).Should(be.EqualTo("ready")))
+// Alice should see that the value of the key "app/status" should be equal to "ready"
+```
+The examples below are written as you write them, package qualifiers included; only
+`ability.UseETCD()` is shortened to `UseETCD()`. The extension's `fixture` packages
+share their name with core ones: when a file uses both, keep the core name and alias the
+extension package with the `etcd` prefix:
 ```go
 import (
 	"github.com/grandper/go-screenplay/v2/question/last"
-	etcdquestion "github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay/v2/resolution/fixture"
+	etcdfixture "github.com/grandper/go-screenplay-etcd/question/fixture"
 	"github.com/grandper/go-screenplay-etcd/resolution/been"
 )
 
-err := anActor.Should(see.The(last.Of(etcdquestion.EventsOnTheKey("app/status"))).ShouldHave(been.Put()))
+fixture.AssertMatch(t, been.Put(), etcdfixture.CreateFakePutEvent("app/status", "ready"))
 ```
 The core actions compose with the ones of the extension as with any other: `keep.TryingTo`
 retries a put against a cluster that is still starting, `proceed.ConcurrentlyTo` runs
@@ -225,11 +245,11 @@ err := anActor.AttemptsTo(put.TheValue("initial").ForTheKey("app/config/flag").I
 // fails: the key "app/config/flag" already exists
 ```
 To update a key only when nobody changed it since you read it, ask for its revision with
-`RevisionOfTheKey` (see below), then close the statement with
+`revision.OfTheKey` (see below), then close the statement with
 `IfTheKeyIsUnchangedSinceTheRevision`. A key modified in between makes the action fail
 with an error wrapping `ErrKeyModified`, so a read-modify-write loop knows to read again:
 ```go
-revision, _ := anActor.AsksFor(RevisionOfTheKey("app/config/counter"))
+revision, _ := anActor.AsksFor(revision.OfTheKey("app/config/counter"))
 
 err := anActor.AttemptsTo(put.TheValue("2").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(revision))
 // Alice attempts to put the value "2" for the key "app/config/counter" if the key is unchanged since the revision 42
@@ -292,8 +312,8 @@ different watches:
 err := anActor.AttemptsTo(watch.TheKey("app/config/database"), watch.TheKey("app/config/database"))
 // the key "app/config/database" is already watched
 ```
-The recorded changes are asked about with `EventsOnTheKey` and
-`EventsOnTheKeysStartingWith` (see below), and waited for with the core `wait.UntilThe`.
+The recorded changes are asked about with `events.OnTheKey` and
+`events.OnTheKeysStartingWith` (see below), and waited for with the core `wait.UntilThe`.
 
 ### Locking
 Only one actor at a time may hold a distributed lock. `acquire.TheLock` acquires the lock
@@ -349,28 +369,28 @@ err := anActor.AttemptsTo(resign.FromTheElection("primary-worker"))
 ## Questions
 
 ### The value of a key
-`ValueOfTheKey` answers with the value the key holds, a `string`, so you assert on it like
-any text:
+`value.OfTheKey` answers with the value the key holds, a `string`, so you assert on it
+like any text:
 ```go
-err := anActor.Should(see.The(ValueOfTheKey("app/config/database")).Should(be.EqualTo("postgresql://localhost:5432")))
+err := anActor.Should(see.The(value.OfTheKey("app/config/database")).Should(be.EqualTo("postgresql://localhost:5432")))
 // Alice should see that the value of the key "app/config/database" should be equal to "postgresql://localhost:5432"
 ```
 A key that does not exist makes the question fail, with an error wrapping `ErrKeyNotFound`,
 and an empty key with `ErrKeyNotProvided`:
 ```go
-value, err := anActor.AsksFor(ValueOfTheKey("does/not/exist"))
+missing, err := anActor.AsksFor(value.OfTheKey("does/not/exist"))
 // the key "does/not/exist" was not found
 ```
 
 ### A key and its metadata
-`KeyNamed` answers with an `*ability.Key`, whether the key exists or not, so you assert on
-its existence with the `Exist` resolution of the extension:
+`key.Named` answers with an `*ability.Key`, whether the key exists or not, so you assert
+on its existence with the `exist.InETCD` resolution of the extension:
 ```go
-err := anActor.Should(see.The(KeyNamed("app/status")).Should(Exist()))
-// Alice should see that the key named "app/status" should exist
-err := anActor.Should(see.The(KeyNamed("app/status")).ShouldNot(Exist()))
-// Alice should see that the key named "app/status" should not exist
-// fails: Alice failed to see that the key named "app/status" should exist: it does not exist
+err := anActor.Should(see.The(key.Named("app/status")).Should(exist.InETCD()))
+// Alice should see that the key named "app/status" should exist in etcd
+err := anActor.Should(see.The(key.Named("app/status")).ShouldNot(exist.InETCD()))
+// Alice should see that the key named "app/status" should not exist in etcd
+// fails: Alice failed to see that the key named "app/status" should exist in etcd: it does not exist
 ```
 An `*ability.Key` exposes its parts through getters: `Name()` and `Exists()`, then
 `Value()`, `Version()` (the number of times the key was put since it was created),
@@ -378,49 +398,51 @@ An `*ability.Key` exposes its parts through getters: `Name()` and `Exists()`, th
 and last modified), and `Lease()` (the ID of the lease attached to it, zero without a
 lease). They are all zero or empty when the key does not exist:
 ```go
-key, _ := anActor.AsksFor(KeyNamed("app/config/database")) // key is an *ability.Key
+database, _ := anActor.AsksFor(key.Named("app/config/database")) // database is an *ability.Key
 
-if key.Exists() && key.Version() > 1 {
-    fmt.Printf("%s was updated %d times, last at revision %d\n", key.Name(), key.Version()-1, key.ModRevision())
+if database.Exists() && database.Version() > 1 {
+    fmt.Printf("%s was updated %d times, last at revision %d\n", database.Name(), database.Version()-1, database.ModRevision())
 }
 ```
-`RevisionOfTheKey` answers directly with the revision at which the key was last modified,
-an `int64`, which is what a conditional write needs. It fails like `ValueOfTheKey` when
-the key does not exist:
+`revision.OfTheKey` answers directly with the revision at which the key was last
+modified, an `int64`, which is what a conditional write needs. It fails like
+`value.OfTheKey` when the key does not exist:
 ```go
-revision, err := anActor.AsksFor(RevisionOfTheKey("app/config/database"))
+lastModification, err := anActor.AsksFor(revision.OfTheKey("app/config/database"))
+// Alice asks for the revision of the key "app/config/database"
 ```
-`TimeToLiveOfTheKey` answers with the time the key has left before its lease expires and
-removes it, a `time.Duration` in whole seconds. A key without a lease never expires, and
-has zero time to live:
+`ttl.OfTheKey` answers with the time to live of the key, the time it has left before its
+lease expires and removes it, a `time.Duration` in whole seconds. A key without a lease
+never expires, and has zero time to live:
 ```go
-err := anActor.Should(see.The(TimeToLiveOfTheKey("locks/batch-job")).Should(be.AtMost(10*time.Second)))
-// Alice should see that the time to live of the key "locks/batch-job" should be at most 10s
-err := anActor.Should(see.The(TimeToLiveOfTheKey("app/config/database")).Should(be.Zero[time.Duration]()))
+err := anActor.Should(see.The(ttl.OfTheKey("locks/batch-job")).Should(be.AtMost(10*time.Second)))
+// Alice should see that the TTL of the key "locks/batch-job" should be at most 10s
+err := anActor.Should(see.The(ttl.OfTheKey("app/config/database")).Should(be.Zero[time.Duration]()))
 ```
 
 ### The keys starting with a prefix
-Three questions look at the keys starting with a prefix. `KeysStartingWith` answers with
-the keys, a `[]string` in the order of the keys; `ValuesOfTheKeysStartingWith` answers
-with a `map[string]string` from each key to its value; and `NumberOfKeysStartingWith`
-answers with how many there are, an `int`, counted by the store without retrieving them:
+Two questions look at the keys starting with a prefix. `keys.StartingWith` answers with
+the keys, a `[]string` in the order of the keys, and `values.OfTheKeysStartingWith`
+answers with a `map[string]string` from each key to its value. Count the keys with the
+core `number.Of`:
 ```go
-err := anActor.Should(see.The(KeysStartingWith("app/config/")).Should(contain.Element("app/config/database")))
+err := anActor.Should(see.The(keys.StartingWith("app/config/")).Should(contain.Element("app/config/database")))
 // Alice should see that the keys starting with "app/config/" should contain the element "app/config/database"
-err := anActor.Should(see.The(ValuesOfTheKeysStartingWith("app/config/")).Should(contain.Key[string, string]("app/config/database")))
-err := anActor.Should(see.The(NumberOfKeysStartingWith("app/config/")).Should(be.EqualTo(2)))
+err := anActor.Should(see.The(values.OfTheKeysStartingWith("app/config/")).Should(contain.Key[string, string]("app/config/database")))
+// Alice should see that the values of the keys starting with "app/config/" should contain the key "app/config/database"
+err := anActor.Should(see.The(number.Of(keys.StartingWith("app/config/"))).Should(be.EqualTo(2)))
 // Alice should see that the number of keys starting with "app/config/" should be equal to 2
 ```
-When no key starts with the prefix, the slice and the map are empty, and the number is
-zero: none of the questions fails.
+When no key starts with the prefix, the slice and the map are empty: neither question
+fails.
 ```go
-err := anActor.Should(see.The(ValuesOfTheKeysStartingWith("app/config/")).Should(be.Empty[map[string]string]()))
+err := anActor.Should(see.The(values.OfTheKeysStartingWith("app/config/")).Should(be.Empty[map[string]string]()))
 ```
 An empty prefix is reported with `ErrPrefixNotProvided`.
 
 ### The events on a watched key
-`EventsOnTheKey` answers with the changes recorded on a key the actor watches, as a
-`[]*ability.Event` in the order they happened; `EventsOnTheKeysStartingWith` does the
+`events.OnTheKey` answers with the changes recorded on a key the actor watches, as a
+`[]*ability.Event` in the order they happened; `events.OnTheKeysStartingWith` does the
 same for a watched prefix. Both answer with an empty slice when nothing happened yet, and
 fail with an error wrapping `ErrNotWatching` when the actor does not watch the key or the
 prefix. Because they answer with a slice, they compose with the core `wait.UntilThe`,
@@ -428,10 +450,10 @@ prefix. Because they answer with a slice, they compose with the core `wait.Until
 ```go
 err := anActor.AttemptsTo(
     watch.TheKey("app/config/database"),
-    wait.UntilThe(EventsOnTheKey("app/config/database")).HappensToHave(length.AtLeast[[]*ability.Event](1)),
+    wait.UntilThe(events.OnTheKey("app/config/database")).HappensToHave(length.AtLeast[[]*ability.Event](1)),
 )
 // Alice attempts to wait until the events on the key "app/config/database" happens to have length at least 1
-err = anActor.Should(see.The(last.Of(EventsOnTheKey("app/config/database"))).ShouldHave(been.Put()))
+err = anActor.Should(see.The(last.Of(events.OnTheKey("app/config/database"))).ShouldHave(been.Put()))
 // Alice should see that the last of events on the key "app/config/database" should have been put
 ```
 An `*ability.Event` exposes its parts through getters: `Key()`, `IsPut()` and
@@ -440,9 +462,9 @@ created the key), `Revision()`, `Version()` (zero after a delete), and
 `CausedByLeaseExpiry()`, which tells a key removed because its lease expired from a key an
 actor removed:
 ```go
-events, _ := anActor.AsksFor(EventsOnTheKey("locks/batch-job")) // events is a []*ability.Event
+recorded, _ := anActor.AsksFor(events.OnTheKey("locks/batch-job")) // recorded is a []*ability.Event
 
-for _, event := range events {
+for _, event := range recorded {
     if event.IsDelete() && event.CausedByLeaseExpiry() {
         fmt.Printf("%s expired at revision %d, it held %q\n", event.Key(), event.Revision(), event.PreviousValue())
     }
@@ -450,44 +472,44 @@ for _, event := range events {
 ```
 
 ### The leader of an election
-`LeaderOfTheElection` answers with the value the leader of the election was announced
+`leader.OfTheElection` answers with the value the leader of the election was announced
 with, a `string`: the name of the actor leading it, or the value it campaigned with. An
 election without a leader answers with an empty value, so the question never fails on
 that account:
 ```go
-err := anActor.Should(see.The(LeaderOfTheElection("primary-worker")).Should(be.EqualTo("Alice")))
+err := anActor.Should(see.The(leader.OfTheElection("primary-worker")).Should(be.EqualTo("Alice")))
 // Alice should see that the leader of the election "primary-worker" should be equal to "Alice"
-err := anActor.Should(see.The(LeaderOfTheElection("primary-worker")).Should(be.Empty[string]()))
+err := anActor.Should(see.The(leader.OfTheElection("primary-worker")).Should(be.Empty[string]()))
 ```
 
 ### The health of the cluster
 Every scenario starts with a running cluster. Rather than letting the first put report
-that it is not, ask for `StatusOfTheEndpoint`: it answers with the `*ability.EndpointStatus`
+that it is not, ask for `status.OfTheEndpoint`: it answers with the `*ability.EndpointStatus`
 of the member listening on the endpoint, and fails when the member cannot be reached. The
 status exposes `Version()`, `Leader()` (the ID of the member believed to lead the cluster,
 zero when none is known), `DBSize()` in bytes, `IsLearner()`, and `Errors()`, the alarms
 and health problems the member reports:
 ```go
-status, err := anActor.AsksFor(StatusOfTheEndpoint("localhost:2379")) // status is an *ability.EndpointStatus
+member, err := anActor.AsksFor(status.OfTheEndpoint("localhost:2379")) // member is an *ability.EndpointStatus
 // Alice asks for the status of the endpoint "localhost:2379"
-err = anActor.Should(see.The(StatusOfTheEndpoint("localhost:2379")).ShouldNotBe(be.Zero[*ability.EndpointStatus]()))
+err = anActor.Should(see.The(status.OfTheEndpoint("localhost:2379")).ShouldNotBe(be.Zero[*ability.EndpointStatus]()))
 ```
-`ActiveAlarms` answers with the alarms raised by the members of the cluster, a
+`alarms.OfTheCluster` answers with the alarms raised by the members of the cluster, a
 `[]*ability.Alarm` with `MemberID()` and `Type()` (`NOSPACE` or `CORRUPT`), empty on a
 healthy cluster:
 ```go
-err := anActor.Should(see.The(ActiveAlarms()).Should(be.Empty[[]*ability.Alarm]()))
-// Alice should see that the active alarms should be empty
+err := anActor.Should(see.The(alarms.OfTheCluster()).Should(be.Empty[[]*ability.Alarm]()))
+// Alice should see that the alarms of the cluster should be empty
 ```
 
 ## Resolutions
 
 ### Existence
-`Exist` tells if the key answered by `KeyNamed` exists. It is a bare infinitive and takes
-the verb `Should` or `ShouldNot`; a nil key does not exist:
+`exist.InETCD` tells if the key answered by `key.Named` exists. It is a bare infinitive
+and takes the verb `Should` or `ShouldNot`; a nil key does not exist:
 ```go
-err := anActor.Should(see.The(KeyNamed("app/status")).Should(Exist()))
-// Alice should see that the key named "app/status" should exist
+err := anActor.Should(see.The(key.Named("app/status")).Should(exist.InETCD()))
+// Alice should see that the key named "app/status" should exist in etcd
 ```
 ### Events
 The `been` resolutions tell what an event did to its key. They are past participles and
@@ -496,11 +518,11 @@ take the verb `ShouldHave` or `ShouldNotHave`. `been.Put()` matches a put, and
 `ByTheExpiryOfItsLease` to require the key to have expired rather than been removed by an
 actor:
 ```go
-err := anActor.Should(see.The(last.Of(EventsOnTheKey("app/config/database"))).ShouldHave(been.Put()))
+err := anActor.Should(see.The(last.Of(events.OnTheKey("app/config/database"))).ShouldHave(been.Put()))
 // Alice should see that the last of events on the key "app/config/database" should have been put
-err := anActor.Should(see.The(last.Of(EventsOnTheKey("locks/batch-job"))).ShouldHave(been.Deleted()))
+err := anActor.Should(see.The(last.Of(events.OnTheKey("locks/batch-job"))).ShouldHave(been.Deleted()))
 // Alice should see that the last of events on the key "locks/batch-job" should have been deleted
-err := anActor.Should(see.The(last.Of(EventsOnTheKey("locks/batch-job"))).ShouldHave(been.Deleted().ByTheExpiryOfItsLease()))
+err := anActor.Should(see.The(last.Of(events.OnTheKey("locks/batch-job"))).ShouldHave(been.Deleted().ByTheExpiryOfItsLease()))
 // Alice should see that the last of events on the key "locks/batch-job" should have been deleted by the expiry of its lease
 // fails: Alice failed to see that the last of events on the key "locks/batch-job" should have been deleted by the expiry of its lease: it has been deleted by an actor, not by the expiry of its lease
 ```
@@ -562,14 +584,17 @@ import (
 	"log"
 
 	"github.com/grandper/go-screenplay/v2/action/see"
+	"github.com/grandper/go-screenplay/v2/question/number"
 	"github.com/grandper/go-screenplay/v2/resolution/be"
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
 	"github.com/grandper/go-screenplay-etcd/ability"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
-	"github.com/grandper/go-screenplay-etcd/question"
-	"github.com/grandper/go-screenplay-etcd/resolution"
+	"github.com/grandper/go-screenplay-etcd/question/key"
+	"github.com/grandper/go-screenplay-etcd/question/keys"
+	"github.com/grandper/go-screenplay-etcd/question/value"
+	"github.com/grandper/go-screenplay-etcd/resolution/exist"
 )
 
 func main() {
@@ -588,9 +613,9 @@ func main() {
 
 	// Check what the store holds.
 	err = alice.Should(
-		see.The(question.KeyNamed("app/config/database")).Should(resolution.Exist()),
-		see.The(question.ValueOfTheKey("app/config/database")).Should(be.EqualTo("postgresql://localhost:5432")),
-		see.The(question.NumberOfKeysStartingWith("app/config/")).Should(be.EqualTo(2)),
+		see.The(key.Named("app/config/database")).Should(exist.InETCD()),
+		see.The(value.OfTheKey("app/config/database")).Should(be.EqualTo("postgresql://localhost:5432")),
+		see.The(number.Of(keys.StartingWith("app/config/"))).Should(be.EqualTo(2)),
 	)
 	if err != nil {
 		log.Fatalf("the configuration is not as expected: %v", err)
@@ -600,7 +625,7 @@ func main() {
 	err = alice.AttemptsTo(
 		remove.TheKey("app/config/cache"),
 		remove.TheKeysStartingWith("app/config/"),
-		see.The(question.KeyNamed("app/config/database")).ShouldNot(resolution.Exist()),
+		see.The(key.Named("app/config/database")).ShouldNot(exist.InETCD()),
 	)
 	if err != nil {
 		log.Fatalf("failed to clean up the configuration: %v", err)
@@ -628,7 +653,7 @@ server (see below).
   `WithTheClient`.
 - Removing only the keys under a prefix whose value satisfies a condition, and putting or
   removing several keys conditionally in one transaction, are not expressed yet: ask for
-  `KeysStartingWith` and write one conditional action per key.
+  `keys.StartingWith` and write one conditional action per key.
 
 ## Development
 The tests run against the embedded server of the `fixture` package, with the race detector:

@@ -98,18 +98,6 @@ func TestKeys(t *testing.T) {
 		assert.Empty(t, none)
 	})
 
-	t.Run("counts the keys starting with a prefix", func(t *testing.T) {
-		require.NoError(t, theAbility.ToRemoveTheKeysStartingWith(t.Context(), "app/"))
-		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/database", "postgresql://localhost:5432", 0))
-		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/cache", "redis://localhost:6379", 0))
-		require.NoError(t, theAbility.ToPut(t.Context(), "app/status", "ready", 0))
-
-		number, err := theAbility.ToCountTheKeysStartingWith(t.Context(), "app/config/")
-
-		require.NoError(t, err)
-		assert.Equal(t, 2, number)
-	})
-
 	t.Run("puts a value only if the key is absent", func(t *testing.T) {
 		require.NoError(t, theAbility.ToRemove(t.Context(), "app/config/flag"))
 
@@ -180,8 +168,6 @@ func TestKeys(t *testing.T) {
 		keys, err := noAbility.ToRetrieveTheKeysStartingWith(t.Context(), "k")
 		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
 		assert.Nil(t, keys)
-		_, err = noAbility.ToCountTheKeysStartingWith(t.Context(), "k")
-		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
 		_, err = noAbility.ToPutIfAbsent(t.Context(), "k", "v", 0)
 		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
 		_, err = noAbility.ToPutIfUnchanged(t.Context(), "k", "v", 1, 0)

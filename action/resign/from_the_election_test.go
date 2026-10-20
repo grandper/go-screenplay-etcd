@@ -3,6 +3,8 @@ package resign_test
 import (
 	"testing"
 
+	"github.com/grandper/go-screenplay-etcd/question/leader"
+
 	"github.com/grandper/go-screenplay/v2/action/see"
 	"github.com/grandper/go-screenplay/v2/resolution/be"
 	"github.com/grandper/go-screenplay/v2/screenplay"
@@ -16,7 +18,6 @@ import (
 	"github.com/grandper/go-screenplay-etcd/action/resign"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 func TestFromTheElection(t *testing.T) {
@@ -38,7 +39,7 @@ func TestFromTheElection(t *testing.T) {
 
 			require.NoError(
 				t,
-				alice.Should(see.The(question.LeaderOfTheElection("primary-worker")).Should(be.Empty[string]())),
+				alice.Should(see.The(leader.OfTheElection("primary-worker")).Should(be.Empty[string]())),
 			)
 		})
 

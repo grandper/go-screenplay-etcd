@@ -11,7 +11,7 @@ import (
 
 // Put creates a resolution to tell if an event put a value for its key:
 //
-//	see.The(last.Of(question.EventsOnTheKey("app/status"))).ShouldHave(been.Put())
+//	see.The(last.Of(events.OnTheKey("app/status"))).ShouldHave(been.Put())
 //
 // A nil event is not a put.
 func Put() screenplay.Resolution[*ability.Event] {
