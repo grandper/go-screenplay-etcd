@@ -18,8 +18,9 @@ The symbols shown below live in the extension's sub-packages:
 | Package | Import path | Provides |
 |---------|-------------|----------|
 | `ability` | `github.com/grandper/go-screenplay-etcd/ability` | `UseETCD`, `Key`, `ErrNoEndpointProvided`, `ErrFailedToConnect` |
-| `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided` |
+| `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
 | `put` | `github.com/grandper/go-screenplay-etcd/action/put` | `TheValue` |
+| `remove` | `github.com/grandper/go-screenplay-etcd/action/remove` | `TheKey`, `TheKeys`, `TheKeysStartingWith` |
 | `question` | `github.com/grandper/go-screenplay-etcd/question` | `ValueOfTheKey`, `ErrKeyNotFound` |
 | `fixture` | `github.com/grandper/go-screenplay-etcd/fixture` | `RunETCDServer`, `ETCDServer` |
 
@@ -132,6 +133,34 @@ If the value is a secret you do not want in the narration, mark the action secre
 err := anActor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").Secretly())
 err := anActor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").WhichShouldBeKeptSecret())
 // Alice attempts to put the value <secret> for the key "app/config/password"
+```
+
+### Removing keys
+Remove a key with `remove.TheKey`. Removing a key that does not exist is not an error, so
+a cleanup task never fails for a key a scenario did not create:
+```go
+err := anActor.AttemptsTo(remove.TheKey("app/config/cache"))
+// Alice attempts to remove the key "app/config/cache"
+```
+Remove several keys at once with `remove.TheKeys`. They are removed in one transaction,
+so the store never holds some of them without the others:
+```go
+err := anActor.AttemptsTo(remove.TheKeys("app/config/cache", "app/config/database"))
+// Alice attempts to remove the keys "app/config/cache", "app/config/database"
+```
+Remove every key starting with a prefix with `remove.TheKeysStartingWith`:
+```go
+err := anActor.AttemptsTo(remove.TheKeysStartingWith("app/config/"))
+// Alice attempts to remove the keys starting with "app/config/"
+```
+An empty key, or no key at all, is reported when the actor performs the action, with
+`ErrKeyNotProvided`. An empty prefix, which would reach every key of the store, is reported
+with `ErrPrefixNotProvided`:
+```go
+err := anActor.AttemptsTo(remove.TheKeys())
+// the key must be provided
+err := anActor.AttemptsTo(remove.TheKeysStartingWith(""))
+// the prefix must be provided
 ```
 
 ## Questions

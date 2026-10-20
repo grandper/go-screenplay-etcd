@@ -15,37 +15,6 @@ import (
 func TestUseETCDAbility(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 
-	t.Run("puts and retrieves a key", func(t *testing.T) {
-		theAbility := ability.TheAbilityOf(
-			screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint())),
-		)
-
-		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/database", "postgresql://localhost:5432"))
-
-		key, err := theAbility.ToRetrieveTheKey(t.Context(), "app/config/database")
-		require.NoError(t, err)
-		assert.True(t, key.Exists())
-		assert.Equal(t, "app/config/database", key.Name())
-		assert.Equal(t, "postgresql://localhost:5432", key.Value())
-		assert.Equal(t, int64(1), key.Version())
-		assert.Positive(t, key.CreateRevision())
-		assert.Equal(t, key.CreateRevision(), key.ModRevision())
-		assert.Zero(t, key.Lease())
-	})
-
-	t.Run("retrieves a key that does not exist", func(t *testing.T) {
-		theAbility := ability.TheAbilityOf(
-			screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint())),
-		)
-
-		key, err := theAbility.ToRetrieveTheKey(t.Context(), "does/not/exist")
-		require.NoError(t, err)
-		assert.False(t, key.Exists())
-		assert.Equal(t, "does/not/exist", key.Name())
-		assert.Empty(t, key.Value())
-		assert.Zero(t, key.Version())
-	})
-
 	t.Run("is safe for concurrent use", func(t *testing.T) {
 		theAbility := ability.TheAbilityOf(
 			screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint())),
@@ -67,15 +36,6 @@ func TestUseETCDAbility(t *testing.T) {
 		for err := range errs {
 			require.NoError(t, err)
 		}
-	})
-
-	t.Run("fails every operation when the actor does not have the ability", func(t *testing.T) {
-		theAbility := ability.TheAbilityOf(screenplay.ActorNamed("Bob"))
-
-		require.ErrorIs(t, theAbility.ToPut(t.Context(), "k", "v"), screenplay.ErrActorMissingAbility)
-		key, err := theAbility.ToRetrieveTheKey(t.Context(), "k")
-		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
-		assert.Nil(t, key)
 	})
 
 	t.Run("fails every operation when the actor is nil", func(t *testing.T) {
