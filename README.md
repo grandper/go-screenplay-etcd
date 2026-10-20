@@ -21,7 +21,7 @@ The symbols shown below live in the extension's sub-packages:
 | `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrKeyAlreadyExists`, `ErrKeyModified` |
 | `put` | `github.com/grandper/go-screenplay-etcd/action/put` | `TheValue`, `TheValues` |
 | `remove` | `github.com/grandper/go-screenplay-etcd/action/remove` | `TheKey`, `TheKeys`, `TheKeysStartingWith` |
-| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
+| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `TimeToLiveOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
 | `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey` |
 | `resolution` | `github.com/grandper/go-screenplay-etcd/resolution` | `Exist` |
 | `fixture` | `github.com/grandper/go-screenplay-etcd/fixture` | `RunETCDServer`, `ETCDServer` |
@@ -136,6 +136,27 @@ err := anActor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password"
 err := anActor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").WhichShouldBeKeptSecret())
 // Alice attempts to put the value <secret> for the key "app/config/password"
 ```
+
+### Putting a value that expires
+A key can be given a time to live: the value is put with a lease, and the store removes
+the key when the lease expires. Close the statement with `ExpiringAfter` and a unit
+(`Seconds`, `Minutes`, or `Milliseconds`, with their singular forms); etcd counts in whole
+seconds, so the time is rounded up:
+```go
+err := anActor.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(10).Seconds())
+// Alice attempts to put the value "held" for the key "locks/batch-job" expiring after 10 seconds
+```
+A long-running actor, such as a worker holding a soft lock, renews the lease instead of
+letting it expire. `AndKeepItAlive` renews it in the background for as long as the actor
+keeps the ability, so the key disappears only once the actor exits:
+```go
+err := anActor.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(10).Seconds().AndKeepItAlive())
+// Alice attempts to put the value "held" for the key "locks/batch-job" expiring after 10 seconds and keep it alive
+
+err = anActor.Exit() // the renewals stop, and the key expires ten seconds later
+```
+The expiry combines with the conditions below: a lock is acquired by putting a value only
+if the key is absent, expiring after a while.
 
 ### Putting several values at once
 Put several values, each for its key, with `put.TheValues`. They are put in one
@@ -255,6 +276,14 @@ an `int64`, which is what a conditional write needs. It fails like `ValueOfTheKe
 the key does not exist:
 ```go
 revision, err := anActor.AsksFor(RevisionOfTheKey("app/config/database"))
+```
+`TimeToLiveOfTheKey` answers with the time the key has left before its lease expires and
+removes it, a `time.Duration` in whole seconds. A key without a lease never expires, and
+has zero time to live:
+```go
+err := anActor.Should(see.The(TimeToLiveOfTheKey("locks/batch-job")).Should(be.AtMost(10*time.Second)))
+// Alice should see that the time to live of the key "locks/batch-job" should be at most 10s
+err := anActor.Should(see.The(TimeToLiveOfTheKey("app/config/database")).Should(be.Zero[time.Duration]()))
 ```
 
 ### The keys starting with a prefix

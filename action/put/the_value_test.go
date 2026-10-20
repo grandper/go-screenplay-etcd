@@ -3,6 +3,7 @@ package put_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	screenplayfixture "github.com/grandper/go-screenplay/v2/screenplay/fixture"
@@ -99,6 +100,61 @@ func TestTheValue(t *testing.T) {
 			)
 		})
 
+		t.Run("expiring after a duration", func(t *testing.T) {
+			require.NoError(
+				t,
+				alice.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(1).Second()),
+			)
+
+			key, err := alice.AsksFor(question.KeyNamed("locks/batch-job"))
+			require.NoError(t, err)
+			assert.True(t, key.Exists())
+			assert.NotZero(t, key.Lease())
+
+			assert.Eventually(t, func() bool {
+				expired, askErr := alice.AsksFor(question.KeyNamed("locks/batch-job"))
+
+				return askErr == nil && !expired.Exists()
+			}, 15*time.Second, 200*time.Millisecond, "the key should expire with its lease")
+		})
+
+		t.Run("expiring after a duration unless kept alive", func(t *testing.T) {
+			carol := screenplay.ActorNamed("Carol").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+
+			require.NoError(t, carol.AttemptsTo(
+				put.TheValue("held").ForTheKey("locks/nightly-job").ExpiringAfter(1).Second().AndKeepItAlive(),
+			))
+
+			time.Sleep(4 * time.Second)
+			assert.Equal(t, "held", etcdfixture.ValueOf(t, client, "locks/nightly-job"), "the lease is kept alive")
+
+			require.NoError(t, carol.Exit())
+			assert.Eventually(t, func() bool {
+				response, err := client.Get(t.Context(), "locks/nightly-job")
+
+				return err == nil && len(response.Kvs) == 0
+			}, 15*time.Second, 200*time.Millisecond, "the key should expire once the actor exits")
+		})
+
+		t.Run("only if the key is absent, expiring after a duration", func(t *testing.T) {
+			require.NoError(t, alice.AttemptsTo(remove.TheKey("locks/batch-job")))
+
+			require.NoError(t, alice.AttemptsTo(
+				put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(10).Seconds().IfTheKeyIsAbsent(),
+			))
+
+			key, err := alice.AsksFor(question.KeyNamed("locks/batch-job"))
+			require.NoError(t, err)
+			assert.NotZero(t, key.Lease())
+			require.ErrorIs(
+				t,
+				alice.AttemptsTo(
+					put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(10).Seconds().IfTheKeyIsAbsent(),
+				),
+				action.ErrKeyAlreadyExists,
+			)
+		})
+
 		t.Run("fails when the key is not provided", func(t *testing.T) {
 			err := alice.AttemptsTo(put.TheValue("v"))
 			require.ErrorIs(t, err, action.ErrKeyNotProvided)
@@ -124,6 +180,22 @@ func TestTheValue(t *testing.T) {
 			`Adam attempts to put the value "redis://localhost:6379" for the key "app/config/cache"`,
 			recorder.Messages()[0],
 		)
+	})
+
+	t.Run("is narrated with its expiry", func(t *testing.T) {
+		recorder := screenplayfixture.NewRecorder()
+		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+
+		require.NoError(t, adam.AttemptsTo(
+			put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(30).Seconds().AndKeepItAlive(),
+		))
+
+		assert.Equal(
+			t,
+			`Adam attempts to put the value "held" for the key "locks/batch-job" expiring after 30 seconds and keep it alive`,
+			recorder.Messages()[0],
+		)
+		require.NoError(t, adam.Exit())
 	})
 
 	t.Run("can be kept secret", func(t *testing.T) {
@@ -158,6 +230,18 @@ func TestTheValue(t *testing.T) {
 		assert.Equal(t,
 			`put the value "v" for the key "k" if the key is unchanged since the revision 42`,
 			put.TheValue("v").ForTheKey("k").IfTheKeyIsUnchangedSinceTheRevision(42).String(),
+		)
+		assert.Equal(t,
+			`put the value "v" for the key "k" expiring after 10 seconds`,
+			put.TheValue("v").ForTheKey("k").ExpiringAfter(10).Seconds().String(),
+		)
+		assert.Equal(t,
+			`put the value "v" for the key "k" expiring after 1 minute and keep it alive`,
+			put.TheValue("v").ForTheKey("k").ExpiringAfter(1).Minute().AndKeepItAlive().String(),
+		)
+		assert.Equal(t,
+			`put the value "v" for the key "k" expiring after 10 seconds if the key is absent`,
+			put.TheValue("v").ForTheKey("k").ExpiringAfter(10).Seconds().IfTheKeyIsAbsent().String(),
 		)
 	})
 }

@@ -25,7 +25,7 @@ func TestUseETCDAbility(t *testing.T) {
 		var group sync.WaitGroup
 		for i := range branches {
 			group.Go(func() {
-				errs <- theAbility.ToPut(t.Context(), "concurrent/key", string(rune('a'+i)))
+				errs <- theAbility.ToPut(t.Context(), "concurrent/key", string(rune('a'+i)), 0)
 				_, err := theAbility.ToRetrieveTheKey(t.Context(), "concurrent/key")
 				errs <- err
 			})
@@ -41,7 +41,7 @@ func TestUseETCDAbility(t *testing.T) {
 	t.Run("fails every operation when the actor is nil", func(t *testing.T) {
 		theAbility := ability.TheAbilityOf(nil)
 
-		require.ErrorIs(t, theAbility.ToPut(t.Context(), "k", "v"), screenplay.ErrActorMissingAbility)
+		require.ErrorIs(t, theAbility.ToPut(t.Context(), "k", "v", 0), screenplay.ErrActorMissingAbility)
 	})
 
 	t.Run("reports the ability that was not given on a nil receiver", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestUseETCDAbility(t *testing.T) {
 		theAbility := ability.UseETCD().WithTheEndpoints(server.Endpoint())
 		require.NoError(
 			t,
-			ability.TheAbilityOf(screenplay.ActorNamed("Alice").WhoCan(theAbility)).ToPut(t.Context(), "k", "v"),
+			ability.TheAbilityOf(screenplay.ActorNamed("Alice").WhoCan(theAbility)).ToPut(t.Context(), "k", "v", 0),
 		)
 
 		require.NoError(t, theAbility.Forget())

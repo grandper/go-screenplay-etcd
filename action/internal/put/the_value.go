@@ -2,8 +2,11 @@ package put
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/grandper/go-screenplay/v2/action/timing"
 	"github.com/grandper/go-screenplay/v2/screenplay"
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/grandper/go-screenplay-etcd/action"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
@@ -15,7 +18,10 @@ import (
 //
 //	put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database")
 func TheValue(value string) *TheValueAction {
-	return &TheValueAction{value: value}
+	a := &TheValueAction{value: value}
+	a.expiry = timing.NewDurationBuilder(a, &a.timeToLive)
+
+	return a
 }
 
 // TheValueAction puts a value for a key.
@@ -28,6 +34,11 @@ type TheValueAction struct {
 	// revision.
 	condition condition
 	revision  int64
+	// expiry builds the time to live of the key, written to timeToLive; zero
+	// means that the key never expires.
+	expiry     *timing.DurationBuilder[TheValueAction]
+	timeToLive time.Duration
+	keptAlive  bool
 }
 
 // condition is the condition a put is guarded by.
@@ -68,6 +79,23 @@ func (a *TheValueAction) IfTheKeyIsUnchangedSinceTheRevision(revision int64) *Th
 	return a
 }
 
+// ExpiringAfter attaches the key to a lease living for the given time, so
+// that the key is removed when the lease expires; it reads "expiring after 10
+// seconds". The time is closed by its unit, and rounded up to whole seconds,
+// which is how etcd counts.
+func (a *TheValueAction) ExpiringAfter(amount int) *timing.DurationBuilder[TheValueAction] {
+	return a.expiry.For(amount)
+}
+
+// AndKeepItAlive renews the lease of the key in the background for as long as
+// the actor keeps the ability, so that the key expires only once the actor
+// exits; it reads "and keep it alive".
+func (a *TheValueAction) AndKeepItAlive() *TheValueAction {
+	a.keptAlive = true
+
+	return a
+}
+
 // WhichShouldBeKeptSecret makes sure that the value is not displayed in the
 // narration.
 func (a *TheValueAction) WhichShouldBeKeptSecret() *TheValueAction {
@@ -87,6 +115,14 @@ func (a *TheValueAction) String() string {
 	description := "put the value " + a.describeTheValue()
 	if a.key != "" {
 		description += " for the key " + verdict.Describe(a.key)
+	}
+
+	if a.timeToLive > 0 {
+		description += " expiring after " + a.expiry.String()
+	}
+
+	if a.keptAlive {
+		description += " and keep it alive"
 	}
 
 	switch a.condition {
@@ -117,9 +153,40 @@ func (a *TheValueAction) PerformAs(theActor *screenplay.Actor) error {
 
 	theAbility := impl.TheAbilityOf(theActor)
 
+	lease, err := a.grantTheLease(theActor, theAbility)
+	if err != nil {
+		return err
+	}
+
+	if err = a.put(theActor, theAbility, lease); err != nil {
+		return err
+	}
+
+	if a.keptAlive && lease != clientv3.NoLease {
+		return theAbility.ToKeepTheLeaseAlive(lease)
+	}
+
+	return nil
+}
+
+// grantTheLease grants the lease the key is attached to, or no lease when the
+// key never expires.
+func (a *TheValueAction) grantTheLease(
+	theActor *screenplay.Actor,
+	theAbility *impl.Operations,
+) (clientv3.LeaseID, error) {
+	if a.timeToLive <= 0 {
+		return clientv3.NoLease, nil
+	}
+
+	return theAbility.ToGrantALease(theActor.Context(), a.timeToLive)
+}
+
+// put puts the value for the key, under the condition of the action.
+func (a *TheValueAction) put(theActor *screenplay.Actor, theAbility *impl.Operations, lease clientv3.LeaseID) error {
 	switch a.condition {
 	case ifTheKeyIsAbsent:
-		succeeded, err := theAbility.ToPutIfAbsent(theActor.Context(), a.key, a.value)
+		succeeded, err := theAbility.ToPutIfAbsent(theActor.Context(), a.key, a.value, lease)
 		if err != nil {
 			return err
 		}
@@ -129,7 +196,7 @@ func (a *TheValueAction) PerformAs(theActor *screenplay.Actor) error {
 
 		return nil
 	case ifTheKeyIsUnchanged:
-		succeeded, err := theAbility.ToPutIfUnchanged(theActor.Context(), a.key, a.value, a.revision)
+		succeeded, err := theAbility.ToPutIfUnchanged(theActor.Context(), a.key, a.value, a.revision, lease)
 		if err != nil {
 			return err
 		}
@@ -146,7 +213,7 @@ func (a *TheValueAction) PerformAs(theActor *screenplay.Actor) error {
 	case unconditional:
 	}
 
-	return theAbility.ToPut(theActor.Context(), a.key, a.value)
+	return theAbility.ToPut(theActor.Context(), a.key, a.value, lease)
 }
 
 // TheValueAction implements the screenplay.Performable interface.

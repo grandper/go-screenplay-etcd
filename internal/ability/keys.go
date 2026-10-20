@@ -8,7 +8,9 @@ import (
 )
 
 // ToPut puts the value for the key, creating the key or overwriting its value.
-func (o *Operations) ToPut(ctx context.Context, key, value string) error {
+// The key is attached to the lease, so that it is removed when the lease
+// expires; the lease zero attaches the key to no lease.
+func (o *Operations) ToPut(ctx context.Context, key, value string, lease clientv3.LeaseID) error {
 	client, err := o.client()
 	if err != nil {
 		return err
@@ -17,9 +19,19 @@ func (o *Operations) ToPut(ctx context.Context, key, value string) error {
 	ctx, cancel := o.ability.context(ctx)
 	defer cancel()
 
-	_, err = client.Put(ctx, key, value)
+	_, err = client.Put(ctx, key, value, withTheLease(lease)...)
 
 	return err
+}
+
+// withTheLease returns the option attaching a key to the lease, or no option
+// for the lease zero.
+func withTheLease(lease clientv3.LeaseID) []clientv3.OpOption {
+	if lease == clientv3.NoLease {
+		return nil
+	}
+
+	return []clientv3.OpOption{clientv3.WithLease(lease)}
 }
 
 // ToRetrieveTheKey retrieves the key with its value and its metadata. A key
@@ -144,17 +156,27 @@ func (o *Operations) ToCountTheKeysStartingWith(ctx context.Context, prefix stri
 }
 
 // ToPutIfAbsent puts the value for the key only when the key does not exist,
-// in one transaction. It returns false, without an error, when the key exists.
-func (o *Operations) ToPutIfAbsent(ctx context.Context, key, value string) (bool, error) {
-	return o.commit(ctx, clientv3util.KeyMissing(key), clientv3.OpPut(key, value))
+// in one transaction, attaching the key to the lease as ToPut does. It returns
+// false, without an error, when the key exists.
+func (o *Operations) ToPutIfAbsent(ctx context.Context, key, value string, lease clientv3.LeaseID) (bool, error) {
+	return o.commit(ctx, clientv3util.KeyMissing(key), clientv3.OpPut(key, value, withTheLease(lease)...))
 }
 
 // ToPutIfUnchanged puts the value for the key only when the key was not
-// modified since the revision, in one transaction. The revision zero means
-// that the key must not exist. It returns false, without an error, when the
-// key was modified.
-func (o *Operations) ToPutIfUnchanged(ctx context.Context, key, value string, revision int64) (bool, error) {
-	return o.commit(ctx, clientv3.Compare(clientv3.ModRevision(key), "=", revision), clientv3.OpPut(key, value))
+// modified since the revision, in one transaction, attaching the key to the
+// lease as ToPut does. The revision zero means that the key must not exist.
+// It returns false, without an error, when the key was modified.
+func (o *Operations) ToPutIfUnchanged(
+	ctx context.Context,
+	key, value string,
+	revision int64,
+	lease clientv3.LeaseID,
+) (bool, error) {
+	return o.commit(
+		ctx,
+		clientv3.Compare(clientv3.ModRevision(key), "=", revision),
+		clientv3.OpPut(key, value, withTheLease(lease)...),
+	)
 }
 
 // ToRemoveIfUnchanged removes the key only when it was not modified since the

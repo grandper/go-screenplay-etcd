@@ -36,6 +36,11 @@ type UseETCDAbility struct {
 	namespace  string
 	timeout    time.Duration
 	client     *clientv3.Client
+
+	// background holds the goroutines the ability runs on behalf of the actor,
+	// such as the renewals of a lease kept alive; they stop when the ability is
+	// forgotten.
+	background background
 }
 
 // WithTheEndpoints gives the ability the endpoints of the etcd cluster, in
@@ -105,6 +110,8 @@ func (a *UseETCDAbility) Forget() error {
 	if a == nil {
 		return screenplay.ErrActorMissingAbility
 	}
+
+	a.background.stop()
 
 	a.connecting.Lock()
 	defer a.connecting.Unlock()
