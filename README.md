@@ -17,13 +17,15 @@ The symbols shown below live in the extension's sub-packages:
 
 | Package | Import path | Provides |
 |---------|-------------|----------|
-| `ability` | `github.com/grandper/go-screenplay-etcd/ability` | `UseETCD`, `Key`, `ErrNoEndpointProvided`, `ErrFailedToConnect` |
+| `ability` | `github.com/grandper/go-screenplay-etcd/ability` | `UseETCD`, `Key`, `Event`, `ErrNoEndpointProvided`, `ErrFailedToConnect`, `ErrAlreadyWatching`, `ErrNotWatching` |
 | `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrKeyAlreadyExists`, `ErrKeyModified` |
 | `put` | `github.com/grandper/go-screenplay-etcd/action/put` | `TheValue`, `TheValues` |
 | `remove` | `github.com/grandper/go-screenplay-etcd/action/remove` | `TheKey`, `TheKeys`, `TheKeysStartingWith` |
-| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `TimeToLiveOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
-| `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey` |
+| `watch` | `github.com/grandper/go-screenplay-etcd/action/watch` | `TheKey`, `TheKeysStartingWith` |
+| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `TimeToLiveOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `EventsOnTheKey`, `EventsOnTheKeysStartingWith`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
+| `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey`, `CreateFakePutEvent`, `CreateFakeDeleteEvent`, `CreateFakeExpiryEvent` |
 | `resolution` | `github.com/grandper/go-screenplay-etcd/resolution` | `Exist` |
+| `been` | `github.com/grandper/go-screenplay-etcd/resolution/been` | `Put`, `Deleted` |
 | `fixture` | `github.com/grandper/go-screenplay-etcd/fixture` | `RunETCDServer`, `ETCDServer` |
 
 Assertions are written with the core screenplay packages (`action/see`,
@@ -97,6 +99,9 @@ client, err := clientv3.New(clientv3.Config{Endpoints: []string{"localhost:2379"
 
 anActor := screenplay.ActorNamed("Alice").WhoCan(UseETCD().WithTheClient(client))
 ```
+
+When the actor exits, the ability also stops the watches it started and the renewals of
+the leases it keeps alive.
 
 The settings are the only methods a test can call on the ability. Its operations live in
 `internal/ability`, so only an action or a question of the extension uses them, in one
@@ -233,6 +238,30 @@ err := anActor.AttemptsTo(remove.TheKeysStartingWith(""))
 // the prefix must be provided
 ```
 
+### Watching keys
+Many scenarios are event-driven: another process updates a configuration key, and the
+actor should notice. Rather than polling, watch the key with `watch.TheKey`: every change
+made to it from then on is recorded, until the actor exits. The action returns once the
+store confirmed the watch, so a change made right after it is never missed:
+```go
+err := anActor.AttemptsTo(watch.TheKey("app/config/database"))
+// Alice attempts to watch the key "app/config/database"
+```
+Watch every key starting with a prefix with `watch.TheKeysStartingWith`:
+```go
+err := anActor.AttemptsTo(watch.TheKeysStartingWith("app/config/"))
+// Alice attempts to watch the keys starting with "app/config/"
+```
+A key, or a prefix, the actor already watches is reported with an error wrapping
+`ErrAlreadyWatching`; a watch of a key and a watch of the keys starting with it are two
+different watches:
+```go
+err := anActor.AttemptsTo(watch.TheKey("app/config/database"), watch.TheKey("app/config/database"))
+// the key "app/config/database" is already watched
+```
+The recorded changes are asked about with `EventsOnTheKey` and
+`EventsOnTheKeysStartingWith` (see below), and waited for with the core `wait.UntilThe`.
+
 ## Questions
 
 ### The value of a key
@@ -305,6 +334,37 @@ err := anActor.Should(see.The(ValuesOfTheKeysStartingWith("app/config/")).Should
 ```
 An empty prefix is reported with `ErrPrefixNotProvided`.
 
+### The events on a watched key
+`EventsOnTheKey` answers with the changes recorded on a key the actor watches, as a
+`[]*ability.Event` in the order they happened; `EventsOnTheKeysStartingWith` does the
+same for a watched prefix. Both answer with an empty slice when nothing happened yet, and
+fail with an error wrapping `ErrNotWatching` when the actor does not watch the key or the
+prefix. Because they answer with a slice, they compose with the core `wait.UntilThe`,
+`length`, `first` and `last` packages, and with the `been` resolutions of the extension:
+```go
+err := anActor.AttemptsTo(
+    watch.TheKey("app/config/database"),
+    wait.UntilThe(EventsOnTheKey("app/config/database")).HappensToHave(length.AtLeast[[]*ability.Event](1)),
+)
+// Alice attempts to wait until the events on the key "app/config/database" happens to have length at least 1
+err = anActor.Should(see.The(last.Of(EventsOnTheKey("app/config/database"))).ShouldHave(been.Put()))
+// Alice should see that the last of events on the key "app/config/database" should have been put
+```
+An `*ability.Event` exposes its parts through getters: `Key()`, `IsPut()` and
+`IsDelete()`, `Value()` (empty for a delete), `PreviousValue()` (empty when the event
+created the key), `Revision()`, `Version()` (zero after a delete), and
+`CausedByLeaseExpiry()`, which tells a key removed because its lease expired from a key an
+actor removed:
+```go
+events, _ := anActor.AsksFor(EventsOnTheKey("locks/batch-job")) // events is a []*ability.Event
+
+for _, event := range events {
+    if event.IsDelete() && event.CausedByLeaseExpiry() {
+        fmt.Printf("%s expired at revision %d, it held %q\n", event.Key(), event.Revision(), event.PreviousValue())
+    }
+}
+```
+
 ## Resolutions
 
 ### Existence
@@ -314,11 +374,31 @@ the verb `Should` or `ShouldNot`; a nil key does not exist:
 err := anActor.Should(see.The(KeyNamed("app/status")).Should(Exist()))
 // Alice should see that the key named "app/status" should exist
 ```
-To test a resolution or an action of your own against a key without a store, the
-`question/fixture` package creates fake keys:
+### Events
+The `been` resolutions tell what an event did to its key. They are past participles and
+take the verb `ShouldHave` or `ShouldNotHave`. `been.Put()` matches a put, and
+`been.Deleted()` a delete, whatever its cause; close the latter with
+`ByTheExpiryOfItsLease` to require the key to have expired rather than been removed by an
+actor:
+```go
+err := anActor.Should(see.The(last.Of(EventsOnTheKey("app/config/database"))).ShouldHave(been.Put()))
+// Alice should see that the last of events on the key "app/config/database" should have been put
+err := anActor.Should(see.The(last.Of(EventsOnTheKey("locks/batch-job"))).ShouldHave(been.Deleted()))
+// Alice should see that the last of events on the key "locks/batch-job" should have been deleted
+err := anActor.Should(see.The(last.Of(EventsOnTheKey("locks/batch-job"))).ShouldHave(been.Deleted().ByTheExpiryOfItsLease()))
+// Alice should see that the last of events on the key "locks/batch-job" should have been deleted by the expiry of its lease
+// fails: Alice failed to see that the last of events on the key "locks/batch-job" should have been deleted by the expiry of its lease: it has been deleted by an actor, not by the expiry of its lease
+```
+
+### Fakes
+To test a resolution or an action of your own without a store, the `question/fixture`
+package creates fake keys and fake events:
 ```go
 existing := fixture.CreateFakeExistingKey("app/status", "ready")
 missing := fixture.CreateFakeMissingKey("does/not/exist")
+put := fixture.CreateFakePutEvent("app/status", "ready")
+deleted := fixture.CreateFakeDeleteEvent("app/status", "ready")
+expired := fixture.CreateFakeExpiryEvent("locks/batch-job", "held")
 ```
 
 ## Testing with an embedded etcd server

@@ -29,3 +29,37 @@ func TestFakes(t *testing.T) {
 		assert.Zero(t, key.Version())
 	})
 }
+
+func TestFakeEvents(t *testing.T) {
+	t.Run("creates a fake put event", func(t *testing.T) {
+		event := fixture.CreateFakePutEvent("app/status", "ready")
+
+		assert.True(t, event.IsPut())
+		assert.False(t, event.IsDelete())
+		assert.Equal(t, "app/status", event.Key())
+		assert.Equal(t, "ready", event.Value())
+		assert.Empty(t, event.PreviousValue())
+		assert.Positive(t, event.Revision())
+		assert.Equal(t, int64(1), event.Version())
+		assert.False(t, event.CausedByLeaseExpiry())
+	})
+
+	t.Run("creates a fake delete event", func(t *testing.T) {
+		event := fixture.CreateFakeDeleteEvent("app/status", "ready")
+
+		assert.True(t, event.IsDelete())
+		assert.False(t, event.IsPut())
+		assert.Equal(t, "app/status", event.Key())
+		assert.Empty(t, event.Value())
+		assert.Equal(t, "ready", event.PreviousValue())
+		assert.False(t, event.CausedByLeaseExpiry())
+	})
+
+	t.Run("creates a fake delete event caused by the expiry of a lease", func(t *testing.T) {
+		event := fixture.CreateFakeExpiryEvent("app/status", "ready")
+
+		assert.True(t, event.IsDelete())
+		assert.Equal(t, "ready", event.PreviousValue())
+		assert.True(t, event.CausedByLeaseExpiry())
+	})
+}

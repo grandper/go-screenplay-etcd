@@ -38,9 +38,12 @@ type UseETCDAbility struct {
 	client     *clientv3.Client
 
 	// background holds the goroutines the ability runs on behalf of the actor,
-	// such as the renewals of a lease kept alive; they stop when the ability is
-	// forgotten.
+	// such as the renewals of a lease kept alive or the watches; they stop when
+	// the ability is forgotten.
 	background background
+
+	mutex   sync.RWMutex
+	watches map[watchID]*watch
 }
 
 // WithTheEndpoints gives the ability the endpoints of the etcd cluster, in
@@ -112,6 +115,7 @@ func (a *UseETCDAbility) Forget() error {
 	}
 
 	a.background.stop()
+	a.forgetTheWatches()
 
 	a.connecting.Lock()
 	defer a.connecting.Unlock()
