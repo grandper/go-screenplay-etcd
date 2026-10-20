@@ -51,6 +51,8 @@ func TestUseETCDAbility(t *testing.T) {
 		assert.Nil(t, theAbility.WithTheEndpoints("localhost:2379"))
 		assert.Nil(t, theAbility.WithTheNamespace("ns/"))
 		assert.Nil(t, theAbility.WithTheClient(nil))
+		assert.Nil(t, theAbility.WithTheCertificateAuthority("ca.crt"))
+		assert.Nil(t, theAbility.WithTheClientCertificate("client.crt").AndTheKey("client.key"))
 	})
 
 	t.Run("can be forgotten more than once", func(t *testing.T) {

@@ -37,6 +37,9 @@ type UseETCDAbility struct {
 	endpoints  []string
 	namespace  string
 	timeout    time.Duration
+	caFile     string
+	certFile   string
+	keyFile    string
 	client     *clientv3.Client
 
 	// background holds the goroutines the ability runs on behalf of the actor,
@@ -157,7 +160,12 @@ func (a *UseETCDAbility) connect() (*clientv3.Client, error) {
 			return nil, ErrNoEndpointProvided
 		}
 
-		client, err := clientv3.New(clientv3.Config{Endpoints: a.endpoints})
+		tlsConfig, err := a.tlsConfig()
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrFailedToConnect, err)
+		}
+
+		client, err := clientv3.New(clientv3.Config{Endpoints: a.endpoints, TLS: tlsConfig})
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrFailedToConnect, err)
 		}

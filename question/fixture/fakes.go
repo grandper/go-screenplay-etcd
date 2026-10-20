@@ -77,3 +77,9 @@ func deleteEvent(key, previousValue string, lease int64) *clientv3.Event {
 		},
 	}
 }
+
+// CreateFakeAlarm creates a fake alarm of the given type, such as "NOSPACE",
+// raised by the member.
+func CreateFakeAlarm(memberID uint64, alarmType string) *ability.Alarm {
+	return impl.NewAlarm(memberID, alarmType)
+}

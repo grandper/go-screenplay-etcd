@@ -12,6 +12,11 @@ var (
 	// server.
 	ErrFailedToConnect = impl.ErrFailedToConnect
 
+	// ErrFailedToLoadTheCertificates is wrapped by the error returned when the
+	// certificate authority, or the client certificate and its key, given to
+	// the ability cannot be loaded.
+	ErrFailedToLoadTheCertificates = impl.ErrFailedToLoadTheCertificates
+
 	// ErrAlreadyWatching is wrapped by the error returned when the actor
 	// watches a key, or the keys starting with a prefix, it already watches.
 	ErrAlreadyWatching = impl.ErrAlreadyWatching

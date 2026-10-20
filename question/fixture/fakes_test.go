@@ -63,3 +63,10 @@ func TestFakeEvents(t *testing.T) {
 		assert.True(t, event.CausedByLeaseExpiry())
 	})
 }
+
+func TestFakeAlarm(t *testing.T) {
+	alarm := fixture.CreateFakeAlarm(42, "NOSPACE")
+
+	assert.Equal(t, uint64(42), alarm.MemberID())
+	assert.Equal(t, "NOSPACE", alarm.Type())
+}

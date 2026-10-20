@@ -106,6 +106,68 @@ func TestUseETCD(t *testing.T) {
 		require.NoError(t, alice.Exit())
 	})
 
+	t.Run("connects securely with a client certificate and its key", func(t *testing.T) {
+		secure := fixture.RunSecureETCDServer(t)
+		alice := screenplay.ActorNamed("Alice").WhoCan(
+			ability.UseETCD().
+				WithTheEndpoints(secure.Endpoint()).
+				WithTheCertificateAuthority(secure.CertificateAuthority()).
+				WithTheClientCertificate(secure.ClientCertificate()).AndTheKey(secure.ClientKey()).
+				WithTimingOutAfter(5).Seconds(),
+		)
+
+		require.NoError(t, alice.AttemptsTo(put.TheValue("v").ForTheKey("k")))
+
+		value, err := alice.AsksFor(question.ValueOfTheKey("k"))
+		require.NoError(t, err)
+		assert.Equal(t, "v", value)
+	})
+
+	t.Run("fails to connect securely without the client certificate the server requires", func(t *testing.T) {
+		secure := fixture.RunSecureETCDServer(t)
+		alice := screenplay.ActorNamed("Alice").WhoCan(
+			ability.UseETCD().
+				WithTheEndpoints(secure.Endpoint()).
+				WithTheCertificateAuthority(secure.CertificateAuthority()).
+				WithTimingOutAfter(2).Seconds(),
+		)
+
+		require.Error(t, alice.AttemptsTo(put.TheValue("v").ForTheKey("k")))
+	})
+
+	t.Run("reports a certificate that cannot be loaded when the actor first uses the ability", func(t *testing.T) {
+		alice := screenplay.ActorNamed("Alice").WhoCan(
+			ability.UseETCD().
+				WithTheEndpoints(server.Endpoint()).
+				WithTheClientCertificate("does/not/exist.crt").AndTheKey("does/not/exist.key"),
+		)
+
+		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
+
+		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, ability.ErrFailedToConnect)
+	})
+
+	t.Run("reports a certificate authority that cannot be loaded", func(t *testing.T) {
+		alice := screenplay.ActorNamed("Alice").WhoCan(
+			ability.UseETCD().WithTheEndpoints(server.Endpoint()).WithTheCertificateAuthority("does/not/exist.crt"),
+		)
+
+		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
+
+		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+	})
+
+	t.Run("reports a certificate authority that is not a certificate", func(t *testing.T) {
+		alice := screenplay.ActorNamed("Alice").WhoCan(
+			ability.UseETCD().WithTheEndpoints(server.Endpoint()).WithTheCertificateAuthority(server.LogFile()),
+		)
+
+		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
+
+		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+	})
+
 	t.Run("accepts its settings in any order", func(t *testing.T) {
 		alice := screenplay.ActorNamed("Alice").WhoCan(
 			ability.UseETCD().

@@ -18,4 +18,8 @@ var (
 	// ErrNameNotProvided is returned by a question about an election when the
 	// name is empty.
 	ErrNameNotProvided = errors.New("the name must be provided")
+
+	// ErrEndpointNotProvided is returned by a question about an endpoint when
+	// the endpoint is empty.
+	ErrEndpointNotProvided = errors.New("the endpoint must be provided")
 )

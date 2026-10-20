@@ -16,6 +16,11 @@ var (
 	// server.
 	ErrFailedToConnect = errors.New("failed to connect to the etcd server")
 
+	// ErrFailedToLoadTheCertificates is wrapped by the error returned when the
+	// certificate authority, or the client certificate and its key, given to
+	// the ability cannot be loaded.
+	ErrFailedToLoadTheCertificates = errors.New("failed to load the certificates")
+
 	// ErrAlreadyWatching is wrapped by the error returned when the actor
 	// watches a key, or the keys starting with a prefix, it already watches.
 	ErrAlreadyWatching = errors.New("already watched")

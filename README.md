@@ -17,7 +17,7 @@ The symbols shown below live in the extension's sub-packages:
 
 | Package | Import path | Provides |
 |---------|-------------|----------|
-| `ability` | `github.com/grandper/go-screenplay-etcd/ability` | `UseETCD`, `Key`, `Event`, `ErrNoEndpointProvided`, `ErrFailedToConnect`, `ErrAlreadyWatching`, `ErrNotWatching`, `ErrLocked`, `ErrLockAlreadyHeld`, `ErrLockNotHeld`, `ErrAlreadyCampaigning`, `ErrNotCampaigning` |
+| `ability` | `github.com/grandper/go-screenplay-etcd/ability` | `UseETCD`, `Key`, `Event`, `EndpointStatus`, `Alarm`, `ErrNoEndpointProvided`, `ErrFailedToConnect`, `ErrFailedToLoadTheCertificates`, `ErrAlreadyWatching`, `ErrNotWatching`, `ErrLocked`, `ErrLockAlreadyHeld`, `ErrLockNotHeld`, `ErrAlreadyCampaigning`, `ErrNotCampaigning` |
 | `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrNameNotProvided`, `ErrKeyAlreadyExists`, `ErrKeyModified` |
 | `put` | `github.com/grandper/go-screenplay-etcd/action/put` | `TheValue`, `TheValues` |
 | `remove` | `github.com/grandper/go-screenplay-etcd/action/remove` | `TheKey`, `TheKeys`, `TheKeysStartingWith` |
@@ -26,11 +26,11 @@ The symbols shown below live in the extension's sub-packages:
 | `release` | `github.com/grandper/go-screenplay-etcd/action/release` | `TheLock` |
 | `campaign` | `github.com/grandper/go-screenplay-etcd/action/campaign` | `InTheElection` |
 | `resign` | `github.com/grandper/go-screenplay-etcd/action/resign` | `FromTheElection` |
-| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `TimeToLiveOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `EventsOnTheKey`, `EventsOnTheKeysStartingWith`, `LeaderOfTheElection`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrNameNotProvided` |
-| `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey`, `CreateFakePutEvent`, `CreateFakeDeleteEvent`, `CreateFakeExpiryEvent` |
+| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `TimeToLiveOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `EventsOnTheKey`, `EventsOnTheKeysStartingWith`, `LeaderOfTheElection`, `StatusOfTheEndpoint`, `ActiveAlarms`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrNameNotProvided`, `ErrEndpointNotProvided` |
+| `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey`, `CreateFakePutEvent`, `CreateFakeDeleteEvent`, `CreateFakeExpiryEvent`, `CreateFakeAlarm` |
 | `resolution` | `github.com/grandper/go-screenplay-etcd/resolution` | `Exist` |
 | `been` | `github.com/grandper/go-screenplay-etcd/resolution/been` | `Put`, `Deleted` |
-| `fixture` | `github.com/grandper/go-screenplay-etcd/fixture` | `RunETCDServer`, `ETCDServer` |
+| `fixture` | `github.com/grandper/go-screenplay-etcd/fixture` | `RunETCDServer`, `RunSecureETCDServer`, `ETCDServer` |
 
 Assertions are written with the core screenplay packages (`action/see`,
 `resolution/be`, `resolution/contain`, `resolution/length`, ...). The actions are written
@@ -94,6 +94,25 @@ its singular form (`Millisecond`, `Second`, `Minute`) so that one unit reads as 
 ```go
 anActor := screenplay.ActorNamed("Alice").WhoCan(UseETCD().WithTheEndpoints("localhost:2379").WithTimingOutAfter(500).Milliseconds())
 anActor := screenplay.ActorNamed("Alice").WhoCan(UseETCD().WithTheEndpoints("localhost:2379").WithTimingOutAfter(1).Minute())
+```
+A cluster that secures its connections with TLS is given the authority that signed its
+certificates with `WithTheCertificateAuthority`; without it, the authorities of the system
+are trusted. A cluster that authenticates its clients with mutual TLS is also given the
+certificate the actor presents, with `WithTheClientCertificate` closed by `AndTheKey`. All
+three are PEM files:
+```go
+anActor := screenplay.ActorNamed("Alice").WhoCan(
+    UseETCD().
+        WithTheEndpoints("etcd.example.com:2379").
+        WithTheCertificateAuthority("ca.crt").
+        WithTheClientCertificate("client.crt").AndTheKey("client.key"),
+)
+```
+A file that cannot be read, or that holds no certificate, is reported by the first action,
+with an error wrapping both `ErrFailedToConnect` and `ErrFailedToLoadTheCertificates`:
+```go
+err := anActor.AttemptsTo(put.TheValue("ready").ForTheKey("app/status"))
+// failed to connect to the etcd server: failed to load the certificates: open client.crt: no such file or directory
 ```
 A client the test created, for example with authentication or with options the ability
 does not expose, is given with `WithTheClient` instead of the endpoints. The namespace, if
@@ -432,6 +451,26 @@ err := anActor.Should(see.The(LeaderOfTheElection("primary-worker")).Should(be.E
 err := anActor.Should(see.The(LeaderOfTheElection("primary-worker")).Should(be.Empty[string]()))
 ```
 
+### The health of the cluster
+Every scenario starts with a running cluster. Rather than letting the first put report
+that it is not, ask for `StatusOfTheEndpoint`: it answers with the `*ability.EndpointStatus`
+of the member listening on the endpoint, and fails when the member cannot be reached. The
+status exposes `Version()`, `Leader()` (the ID of the member believed to lead the cluster,
+zero when none is known), `DBSize()` in bytes, `IsLearner()`, and `Errors()`, the alarms
+and health problems the member reports:
+```go
+status, err := anActor.AsksFor(StatusOfTheEndpoint("localhost:2379")) // status is an *ability.EndpointStatus
+// Alice asks for the status of the endpoint "localhost:2379"
+err = anActor.Should(see.The(StatusOfTheEndpoint("localhost:2379")).ShouldNotBe(be.Zero[*ability.EndpointStatus]()))
+```
+`ActiveAlarms` answers with the alarms raised by the members of the cluster, a
+`[]*ability.Alarm` with `MemberID()` and `Type()` (`NOSPACE` or `CORRUPT`), empty on a
+healthy cluster:
+```go
+err := anActor.Should(see.The(ActiveAlarms()).Should(be.Empty[[]*ability.Alarm]()))
+// Alice should see that the active alarms should be empty
+```
+
 ## Resolutions
 
 ### Existence
@@ -466,6 +505,7 @@ missing := fixture.CreateFakeMissingKey("does/not/exist")
 put := fixture.CreateFakePutEvent("app/status", "ready")
 deleted := fixture.CreateFakeDeleteEvent("app/status", "ready")
 expired := fixture.CreateFakeExpiryEvent("locks/batch-job", "held")
+alarm := fixture.CreateFakeAlarm(memberID, "NOSPACE")
 ```
 
 ## Testing with an embedded etcd server
@@ -486,6 +526,20 @@ the state of the store from outside the actor:
 client := server.NewClient(t)
 
 response, err := client.Get(ctx, "app/config/database")
+```
+
+`RunSecureETCDServer` starts a server that secures its connections with TLS and requires
+its clients to present a certificate. It generates a certificate authority, a server
+certificate and a client certificate for the test, so a scenario exercises the secure
+settings of the ability without a real cluster:
+```go
+server := fixture.RunSecureETCDServer(t)
+anActor := screenplay.ActorNamed("Alice").WhoCan(
+    UseETCD().
+        WithTheEndpoints(server.Endpoint()).
+        WithTheCertificateAuthority(server.CertificateAuthority()).
+        WithTheClientCertificate(server.ClientCertificate()).AndTheKey(server.ClientKey()),
+)
 ```
 
 ## License
