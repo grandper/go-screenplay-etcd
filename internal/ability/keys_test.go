@@ -78,6 +78,38 @@ func TestKeys(t *testing.T) {
 		assert.True(t, status.Exists())
 	})
 
+	t.Run("retrieves the keys starting with a prefix, in order", func(t *testing.T) {
+		require.NoError(t, theAbility.ToRemoveTheKeysStartingWith(t.Context(), "app/"))
+		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/database", "postgresql://localhost:5432"))
+		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/cache", "redis://localhost:6379"))
+		require.NoError(t, theAbility.ToPut(t.Context(), "app/status", "ready"))
+
+		keys, err := theAbility.ToRetrieveTheKeysStartingWith(t.Context(), "app/config/")
+
+		require.NoError(t, err)
+		require.Len(t, keys, 2)
+		assert.Equal(t, "app/config/cache", keys[0].Name())
+		assert.Equal(t, "redis://localhost:6379", keys[0].Value())
+		assert.Equal(t, "app/config/database", keys[1].Name())
+		assert.Equal(t, "postgresql://localhost:5432", keys[1].Value())
+
+		none, err := theAbility.ToRetrieveTheKeysStartingWith(t.Context(), "nothing/")
+		require.NoError(t, err)
+		assert.Empty(t, none)
+	})
+
+	t.Run("counts the keys starting with a prefix", func(t *testing.T) {
+		require.NoError(t, theAbility.ToRemoveTheKeysStartingWith(t.Context(), "app/"))
+		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/database", "postgresql://localhost:5432"))
+		require.NoError(t, theAbility.ToPut(t.Context(), "app/config/cache", "redis://localhost:6379"))
+		require.NoError(t, theAbility.ToPut(t.Context(), "app/status", "ready"))
+
+		number, err := theAbility.ToCountTheKeysStartingWith(t.Context(), "app/config/")
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, number)
+	})
+
 	t.Run("fails every operation when the actor does not have the ability", func(t *testing.T) {
 		noAbility := ability.TheAbilityOf(screenplay.ActorNamed("Bob"))
 
@@ -88,5 +120,10 @@ func TestKeys(t *testing.T) {
 		require.ErrorIs(t, noAbility.ToRemove(t.Context(), "k"), screenplay.ErrActorMissingAbility)
 		require.ErrorIs(t, noAbility.ToRemoveTheKeys(t.Context(), "k"), screenplay.ErrActorMissingAbility)
 		require.ErrorIs(t, noAbility.ToRemoveTheKeysStartingWith(t.Context(), "k"), screenplay.ErrActorMissingAbility)
+		keys, err := noAbility.ToRetrieveTheKeysStartingWith(t.Context(), "k")
+		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
+		assert.Nil(t, keys)
+		_, err = noAbility.ToCountTheKeysStartingWith(t.Context(), "k")
+		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
 	})
 }

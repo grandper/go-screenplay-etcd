@@ -5,6 +5,7 @@ import (
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
+	"github.com/grandper/go-screenplay-etcd/ability"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -26,13 +27,9 @@ type valueOfTheKeyQuestion struct {
 
 // AnsweredBy returns the value the key holds.
 func (q *valueOfTheKeyQuestion) AnsweredBy(theActor *screenplay.Actor) (string, error) {
-	key, err := impl.TheAbilityOf(theActor).ToRetrieveTheKey(theActor.Context(), q.key)
+	key, err := retrieveTheExistingKey(theActor, q.key)
 	if err != nil {
 		return "", err
-	}
-
-	if !key.Exists() {
-		return "", fmt.Errorf("the key %s %w", verdict.Describe(q.key), ErrKeyNotFound)
 	}
 
 	return key.Value(), nil
@@ -45,3 +42,23 @@ func (q *valueOfTheKeyQuestion) String() string {
 
 // valueOfTheKeyQuestion implements the screenplay.Question interface.
 var _ screenplay.Question[string] = (*valueOfTheKeyQuestion)(nil)
+
+// retrieveTheExistingKey retrieves the key for the questions that need it to
+// exist: an empty key fails with ErrKeyNotProvided, and a key that does not
+// exist with an error wrapping ErrKeyNotFound.
+func retrieveTheExistingKey(theActor *screenplay.Actor, name string) (*ability.Key, error) {
+	if name == "" {
+		return nil, ErrKeyNotProvided
+	}
+
+	key, err := impl.TheAbilityOf(theActor).ToRetrieveTheKey(theActor.Context(), name)
+	if err != nil {
+		return nil, err
+	}
+
+	if !key.Exists() {
+		return nil, fmt.Errorf("the key %s %w", verdict.Describe(name), ErrKeyNotFound)
+	}
+
+	return key, nil
+}

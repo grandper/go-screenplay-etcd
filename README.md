@@ -21,7 +21,9 @@ The symbols shown below live in the extension's sub-packages:
 | `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
 | `put` | `github.com/grandper/go-screenplay-etcd/action/put` | `TheValue` |
 | `remove` | `github.com/grandper/go-screenplay-etcd/action/remove` | `TheKey`, `TheKeys`, `TheKeysStartingWith` |
-| `question` | `github.com/grandper/go-screenplay-etcd/question` | `ValueOfTheKey`, `ErrKeyNotFound` |
+| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
+| `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey` |
+| `resolution` | `github.com/grandper/go-screenplay-etcd/resolution` | `Exist` |
 | `fixture` | `github.com/grandper/go-screenplay-etcd/fixture` | `RunETCDServer`, `ETCDServer` |
 
 Assertions are written with the core screenplay packages (`action/see`,
@@ -172,10 +174,75 @@ any text:
 err := anActor.Should(see.The(ValueOfTheKey("app/config/database")).Should(be.EqualTo("postgresql://localhost:5432")))
 // Alice should see that the value of the key "app/config/database" should be equal to "postgresql://localhost:5432"
 ```
-A key that does not exist makes the question fail, with an error wrapping `ErrKeyNotFound`:
+A key that does not exist makes the question fail, with an error wrapping `ErrKeyNotFound`,
+and an empty key with `ErrKeyNotProvided`:
 ```go
 value, err := anActor.AsksFor(ValueOfTheKey("does/not/exist"))
 // the key "does/not/exist" was not found
+```
+
+### A key and its metadata
+`KeyNamed` answers with an `*ability.Key`, whether the key exists or not, so you assert on
+its existence with the `Exist` resolution of the extension:
+```go
+err := anActor.Should(see.The(KeyNamed("app/status")).Should(Exist()))
+// Alice should see that the key named "app/status" should exist
+err := anActor.Should(see.The(KeyNamed("app/status")).ShouldNot(Exist()))
+// Alice should see that the key named "app/status" should not exist
+// fails: Alice failed to see that the key named "app/status" should exist: it does not exist
+```
+An `*ability.Key` exposes its parts through getters: `Name()` and `Exists()`, then
+`Value()`, `Version()` (the number of times the key was put since it was created),
+`CreateRevision()` and `ModRevision()` (the revisions of the store at which it was created
+and last modified), and `Lease()` (the ID of the lease attached to it, zero without a
+lease). They are all zero or empty when the key does not exist:
+```go
+key, _ := anActor.AsksFor(KeyNamed("app/config/database")) // key is an *ability.Key
+
+if key.Exists() && key.Version() > 1 {
+    fmt.Printf("%s was updated %d times, last at revision %d\n", key.Name(), key.Version()-1, key.ModRevision())
+}
+```
+`RevisionOfTheKey` answers directly with the revision at which the key was last modified,
+an `int64`, which is what a conditional write needs. It fails like `ValueOfTheKey` when
+the key does not exist:
+```go
+revision, err := anActor.AsksFor(RevisionOfTheKey("app/config/database"))
+```
+
+### The keys starting with a prefix
+Three questions look at the keys starting with a prefix. `KeysStartingWith` answers with
+the keys, a `[]string` in the order of the keys; `ValuesOfTheKeysStartingWith` answers
+with a `map[string]string` from each key to its value; and `NumberOfKeysStartingWith`
+answers with how many there are, an `int`, counted by the store without retrieving them:
+```go
+err := anActor.Should(see.The(KeysStartingWith("app/config/")).Should(contain.Element("app/config/database")))
+// Alice should see that the keys starting with "app/config/" should contain the element "app/config/database"
+err := anActor.Should(see.The(ValuesOfTheKeysStartingWith("app/config/")).Should(contain.Key[string, string]("app/config/database")))
+err := anActor.Should(see.The(NumberOfKeysStartingWith("app/config/")).Should(be.EqualTo(2)))
+// Alice should see that the number of keys starting with "app/config/" should be equal to 2
+```
+When no key starts with the prefix, the slice and the map are empty, and the number is
+zero: none of the questions fails.
+```go
+err := anActor.Should(see.The(ValuesOfTheKeysStartingWith("app/config/")).Should(be.Empty[map[string]string]()))
+```
+An empty prefix is reported with `ErrPrefixNotProvided`.
+
+## Resolutions
+
+### Existence
+`Exist` tells if the key answered by `KeyNamed` exists. It is a bare infinitive and takes
+the verb `Should` or `ShouldNot`; a nil key does not exist:
+```go
+err := anActor.Should(see.The(KeyNamed("app/status")).Should(Exist()))
+// Alice should see that the key named "app/status" should exist
+```
+To test a resolution or an action of your own against a key without a store, the
+`question/fixture` package creates fake keys:
+```go
+existing := fixture.CreateFakeExistingKey("app/status", "ready")
+missing := fixture.CreateFakeMissingKey("does/not/exist")
 ```
 
 ## Testing with an embedded etcd server

@@ -97,3 +97,47 @@ func (o *Operations) ToRemoveTheKeysStartingWith(ctx context.Context, prefix str
 
 	return err
 }
+
+// ToRetrieveTheKeysStartingWith retrieves every key starting with the prefix,
+// with its value and its metadata, in the order of the keys. When no key
+// starts with the prefix, it answers an empty slice, not an error.
+func (o *Operations) ToRetrieveTheKeysStartingWith(ctx context.Context, prefix string) ([]*Key, error) {
+	client, err := o.client()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := o.ability.context(ctx)
+	defer cancel()
+
+	response, err := client.Get(ctx, prefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]*Key, 0, len(response.Kvs))
+	for _, kv := range response.Kvs {
+		keys = append(keys, NewKey(kv))
+	}
+
+	return keys, nil
+}
+
+// ToCountTheKeysStartingWith counts the keys starting with the prefix, without
+// retrieving them.
+func (o *Operations) ToCountTheKeysStartingWith(ctx context.Context, prefix string) (int, error) {
+	client, err := o.client()
+	if err != nil {
+		return 0, err
+	}
+
+	ctx, cancel := o.ability.context(ctx)
+	defer cancel()
+
+	response, err := client.Get(ctx, prefix, clientv3.WithPrefix(), clientv3.WithCountOnly())
+	if err != nil {
+		return 0, err
+	}
+
+	return int(response.Count), nil
+}
