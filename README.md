@@ -37,15 +37,24 @@ Assertions are written with the core screenplay packages (`action/see`,
 with their package, which is their verb: `put.TheValue(...)` reads "put the value". For
 readability the examples below drop the package qualifiers on the other extension
 constructors; import the packages above and qualify them as `ability.UseETCD()`, and so on.
-The extension's `question` package shares its name with the core one: when a file uses
-both, keep the core name and alias the extension package with the `etcd` prefix:
+The extension's `question`, `resolution` and `fixture` packages share their names with
+core ones: when a file uses both, keep the core name and alias the extension package with
+the `etcd` prefix:
 ```go
 import (
-	"github.com/grandper/go-screenplay/v2/action/keep"
-	"github.com/grandper/go-screenplay-etcd/action/put"
+	"github.com/grandper/go-screenplay/v2/question/last"
+	etcdquestion "github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay-etcd/resolution/been"
 )
 
-err := anActor.AttemptsTo(keep.TryingTo(put.TheValue("ready").ForTheKey("app/status")))
+err := anActor.Should(see.The(last.Of(etcdquestion.EventsOnTheKey("app/status"))).ShouldHave(been.Put()))
+```
+The core actions compose with the ones of the extension as with any other: `keep.TryingTo`
+retries a put against a cluster that is still starting, `proceed.ConcurrentlyTo` runs
+several of them at once, and `wait.UntilThe` waits for a question of the extension to
+answer as expected:
+```go
+err := anActor.AttemptsTo(keep.TryingTo(put.TheValue("ready").ForTheKey("app/status")).For(30).Seconds())
 ```
 
 ## The ability
@@ -541,6 +550,94 @@ anActor := screenplay.ActorNamed("Alice").WhoCan(
         WithTheClientCertificate(server.ClientCertificate()).AndTheKey(server.ClientKey()),
 )
 ```
+
+## Putting it all together
+A complete program, from giving an actor the ability to releasing the connection. It
+stores a configuration in one transaction, checks what the store holds, removes one key
+then everything left under the prefix, and exits:
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/grandper/go-screenplay/v2/action/see"
+	"github.com/grandper/go-screenplay/v2/resolution/be"
+	"github.com/grandper/go-screenplay/v2/screenplay"
+
+	"github.com/grandper/go-screenplay-etcd/ability"
+	"github.com/grandper/go-screenplay-etcd/action/put"
+	"github.com/grandper/go-screenplay-etcd/action/remove"
+	"github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay-etcd/resolution"
+)
+
+func main() {
+	alice := screenplay.ActorNamed("Alice").WhoCan(
+		ability.UseETCD().WithTheEndpoints("localhost:2379").WithTimingOutAfter(5).Seconds(),
+	)
+
+	// Store the configuration in one transaction.
+	err := alice.AttemptsTo(put.TheValues(map[string]string{
+		"app/config/database": "postgresql://localhost:5432",
+		"app/config/cache":    "redis://localhost:6379",
+	}))
+	if err != nil {
+		log.Fatalf("failed to store the configuration: %v", err)
+	}
+
+	// Check what the store holds.
+	err = alice.Should(
+		see.The(question.KeyNamed("app/config/database")).Should(resolution.Exist()),
+		see.The(question.ValueOfTheKey("app/config/database")).Should(be.EqualTo("postgresql://localhost:5432")),
+		see.The(question.NumberOfKeysStartingWith("app/config/")).Should(be.EqualTo(2)),
+	)
+	if err != nil {
+		log.Fatalf("the configuration is not as expected: %v", err)
+	}
+
+	// Clean up: one key, then everything left under the prefix.
+	err = alice.AttemptsTo(
+		remove.TheKey("app/config/cache"),
+		remove.TheKeysStartingWith("app/config/"),
+		see.The(question.KeyNamed("app/config/database")).ShouldNot(resolution.Exist()),
+	)
+	if err != nil {
+		log.Fatalf("failed to clean up the configuration: %v", err)
+	}
+
+	// Release the connection.
+	if err = alice.Exit(); err != nil {
+		log.Fatalf("Alice failed to exit: %v", err)
+	}
+}
+```
+Every import above is used as shown; the program builds as it is against an etcd server
+listening on `localhost:2379`. In a test, replace the endpoint with the one of an embedded
+server (see below).
+
+## Limitations
+- There is no retry, and no backoff, around the operations of the ability: a failure is
+  reported by the action that met it. Wrap an action with the core `keep.TryingTo` to
+  retry it.
+- A lease lives for whole seconds, which is how etcd counts, and the cluster raises a short
+  lease to the minimum it allows (two seconds with the defaults of the embedded server),
+  so a key expires a little later than written.
+- The ability authenticates with certificates only. For a user name and a password, or for
+  any other option of the etcd client, create the client yourself and give it with
+  `WithTheClient`.
+- Removing only the keys under a prefix whose value satisfies a condition, and putting or
+  removing several keys conditionally in one transaction, are not expressed yet: ask for
+  `KeysStartingWith` and write one conditional action per key.
+
+## Development
+The tests run against the embedded server of the `fixture` package, with the race detector:
+```bash
+go test -race ./...
+golangci-lint run ./...
+```
+Until go-screenplay v2.0.0 is tagged, `go.mod` replaces `github.com/grandper/go-screenplay/v2`
+with the `release/2.0.0` branch checked out next to this repository, in `../go-screenplay`.
 
 ## License
 This extension is released under the [MIT License](LICENSE).
