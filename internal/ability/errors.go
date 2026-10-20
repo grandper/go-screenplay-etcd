@@ -1,6 +1,10 @@
 package ability
 
-import "errors"
+import (
+	"errors"
+
+	"go.etcd.io/etcd/client/v3/concurrency"
+)
 
 var (
 	// ErrNoEndpointProvided is returned by the first operation of an ability
@@ -20,4 +24,24 @@ var (
 	// the events on a key, or on the keys starting with a prefix, it does not
 	// watch.
 	ErrNotWatching = errors.New("not watched")
+
+	// ErrLocked is returned when the actor acquires, without waiting, a lock
+	// another actor holds. It is the error of the etcd client.
+	ErrLocked = concurrency.ErrLocked
+
+	// ErrLockAlreadyHeld is wrapped by the error returned when the actor
+	// acquires a lock it already holds.
+	ErrLockAlreadyHeld = errors.New("already held by the actor")
+
+	// ErrLockNotHeld is wrapped by the error returned when the actor releases a
+	// lock it does not hold.
+	ErrLockNotHeld = errors.New("not held by the actor")
+
+	// ErrAlreadyCampaigning is wrapped by the error returned when the actor
+	// campaigns in an election it already campaigns in.
+	ErrAlreadyCampaigning = errors.New("the actor already campaigns")
+
+	// ErrNotCampaigning is wrapped by the error returned when the actor resigns
+	// from an election it does not campaign in.
+	ErrNotCampaigning = errors.New("the actor does not campaign")
 )

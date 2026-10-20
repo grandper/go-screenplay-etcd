@@ -2,6 +2,7 @@ package ability
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/grandper/go-screenplay/v2/action/timing"
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/namespace"
 )
 
@@ -42,8 +44,16 @@ type UseETCDAbility struct {
 	// the ability is forgotten.
 	background background
 
-	mutex   sync.RWMutex
-	watches map[watchID]*watch
+	mutex     sync.RWMutex
+	watches   map[watchID]*watch
+	locks     map[string]*concurrency.Mutex
+	elections map[string]*concurrency.Election
+
+	// opening serializes the lazy creation of the session the locks and the
+	// elections share, so that the state mutex is never held during a network
+	// call.
+	opening sync.Mutex
+	session *concurrency.Session
 }
 
 // WithTheEndpoints gives the ability the endpoints of the etcd cluster, in
@@ -116,15 +126,16 @@ func (a *UseETCDAbility) Forget() error {
 
 	a.background.stop()
 	a.forgetTheWatches()
+	err := a.closeTheSession()
 
 	a.connecting.Lock()
 	defer a.connecting.Unlock()
 
 	if a.client == nil {
-		return nil
+		return err
 	}
 
-	err := a.client.Close()
+	err = errors.Join(err, a.client.Close())
 	a.client = nil
 
 	return err

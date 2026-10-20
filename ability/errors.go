@@ -20,4 +20,24 @@ var (
 	// the events on a key, or on the keys starting with a prefix, it does not
 	// watch.
 	ErrNotWatching = impl.ErrNotWatching
+
+	// ErrLocked is returned when the actor acquires, without waiting, a lock
+	// another actor holds. It is the error of the etcd client.
+	ErrLocked = impl.ErrLocked
+
+	// ErrLockAlreadyHeld is wrapped by the error returned when the actor
+	// acquires a lock it already holds.
+	ErrLockAlreadyHeld = impl.ErrLockAlreadyHeld
+
+	// ErrLockNotHeld is wrapped by the error returned when the actor releases a
+	// lock it does not hold.
+	ErrLockNotHeld = impl.ErrLockNotHeld
+
+	// ErrAlreadyCampaigning is wrapped by the error returned when the actor
+	// campaigns in an election it already campaigns in.
+	ErrAlreadyCampaigning = impl.ErrAlreadyCampaigning
+
+	// ErrNotCampaigning is wrapped by the error returned when the actor resigns
+	// from an election it does not campaign in.
+	ErrNotCampaigning = impl.ErrNotCampaigning
 )

@@ -21,4 +21,8 @@ var (
 	// return when the key was to be written only if it was unchanged since a
 	// revision, and it was modified.
 	ErrKeyModified = errors.New("was modified")
+
+	// ErrNameNotProvided is returned when an action about a lock or an election
+	// is performed with an empty name.
+	ErrNameNotProvided = errors.New("the name must be provided")
 )

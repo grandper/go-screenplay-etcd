@@ -17,12 +17,16 @@ The symbols shown below live in the extension's sub-packages:
 
 | Package | Import path | Provides |
 |---------|-------------|----------|
-| `ability` | `github.com/grandper/go-screenplay-etcd/ability` | `UseETCD`, `Key`, `Event`, `ErrNoEndpointProvided`, `ErrFailedToConnect`, `ErrAlreadyWatching`, `ErrNotWatching` |
-| `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrKeyAlreadyExists`, `ErrKeyModified` |
+| `ability` | `github.com/grandper/go-screenplay-etcd/ability` | `UseETCD`, `Key`, `Event`, `ErrNoEndpointProvided`, `ErrFailedToConnect`, `ErrAlreadyWatching`, `ErrNotWatching`, `ErrLocked`, `ErrLockAlreadyHeld`, `ErrLockNotHeld`, `ErrAlreadyCampaigning`, `ErrNotCampaigning` |
+| `action` | `github.com/grandper/go-screenplay-etcd/action` | `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrNameNotProvided`, `ErrKeyAlreadyExists`, `ErrKeyModified` |
 | `put` | `github.com/grandper/go-screenplay-etcd/action/put` | `TheValue`, `TheValues` |
 | `remove` | `github.com/grandper/go-screenplay-etcd/action/remove` | `TheKey`, `TheKeys`, `TheKeysStartingWith` |
 | `watch` | `github.com/grandper/go-screenplay-etcd/action/watch` | `TheKey`, `TheKeysStartingWith` |
-| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `TimeToLiveOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `EventsOnTheKey`, `EventsOnTheKeysStartingWith`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided` |
+| `acquire` | `github.com/grandper/go-screenplay-etcd/action/acquire` | `TheLock` |
+| `release` | `github.com/grandper/go-screenplay-etcd/action/release` | `TheLock` |
+| `campaign` | `github.com/grandper/go-screenplay-etcd/action/campaign` | `InTheElection` |
+| `resign` | `github.com/grandper/go-screenplay-etcd/action/resign` | `FromTheElection` |
+| `question` | `github.com/grandper/go-screenplay-etcd/question` | `KeyNamed`, `ValueOfTheKey`, `RevisionOfTheKey`, `TimeToLiveOfTheKey`, `KeysStartingWith`, `ValuesOfTheKeysStartingWith`, `NumberOfKeysStartingWith`, `EventsOnTheKey`, `EventsOnTheKeysStartingWith`, `LeaderOfTheElection`, `ErrKeyNotFound`, `ErrKeyNotProvided`, `ErrPrefixNotProvided`, `ErrNameNotProvided` |
 | `fixture` (questions) | `github.com/grandper/go-screenplay-etcd/question/fixture` | `CreateFakeExistingKey`, `CreateFakeMissingKey`, `CreateFakePutEvent`, `CreateFakeDeleteEvent`, `CreateFakeExpiryEvent` |
 | `resolution` | `github.com/grandper/go-screenplay-etcd/resolution` | `Exist` |
 | `been` | `github.com/grandper/go-screenplay-etcd/resolution/been` | `Put`, `Deleted` |
@@ -101,7 +105,8 @@ anActor := screenplay.ActorNamed("Alice").WhoCan(UseETCD().WithTheClient(client)
 ```
 
 When the actor exits, the ability also stops the watches it started and the renewals of
-the leases it keeps alive.
+the leases it keeps alive, releases the locks it holds and resigns from the elections it
+campaigns in.
 
 The settings are the only methods a test can call on the ability. Its operations live in
 `internal/ability`, so only an action or a question of the extension uses them, in one
@@ -262,6 +267,57 @@ err := anActor.AttemptsTo(watch.TheKey("app/config/database"), watch.TheKey("app
 The recorded changes are asked about with `EventsOnTheKey` and
 `EventsOnTheKeysStartingWith` (see below), and waited for with the core `wait.UntilThe`.
 
+### Locking
+Only one actor at a time may hold a distributed lock. `acquire.TheLock` acquires the lock
+of the given name, waiting for the actor holding it to release it; the wait ends with the
+context of the actor (see `WithContext`). The lock is released with `release.TheLock`, or
+when the actor exits:
+```go
+err := anActor.AttemptsTo(acquire.TheLock("deployment"))
+// Alice attempts to acquire the lock "deployment"
+err = anActor.AttemptsTo(release.TheLock("deployment"))
+// Alice attempts to release the lock "deployment"
+```
+To fail instead of waiting when another actor holds the lock, close the statement with
+`WithoutWaiting`; the action then fails with `ErrLocked`, the error of the etcd client:
+```go
+err := anotherActor.AttemptsTo(acquire.TheLock("deployment").WithoutWaiting())
+// Bob attempts to acquire the lock "deployment" without waiting
+// fails: mutex: Locked by another session
+```
+Acquiring a lock the actor already holds is reported with an error wrapping
+`ErrLockAlreadyHeld`, and releasing a lock it does not hold with an error wrapping
+`ErrLockNotHeld`; an empty name with `ErrNameNotProvided`:
+```go
+err := anActor.AttemptsTo(release.TheLock("deployment"))
+// the lock "deployment" is not held by the actor
+```
+The locks of an actor share one session, a lease the client keeps alive: should the actor
+lose its connection to the cluster for longer than the session allows, the store releases
+its locks.
+
+### Campaigning in an election
+A step up from a lock, an election names a leader among the actors campaigning in it, and
+anyone can ask who leads. `campaign.InTheElection` campaigns in the election of the given
+name and returns once the actor leads it, waiting for the leader to resign if there is
+one. The actor is announced under its name, unless it campaigns `WithTheValue` of its own.
+The leadership is given up with `resign.FromTheElection`, or when the actor exits:
+```go
+err := anActor.AttemptsTo(campaign.InTheElection("primary-worker"))
+// Alice attempts to campaign in the election "primary-worker"
+err := anActor.AttemptsTo(campaign.InTheElection("primary-worker").WithTheValue("node-1"))
+// Alice attempts to campaign in the election "primary-worker" with the value "node-1"
+err = anActor.AttemptsTo(resign.FromTheElection("primary-worker"))
+// Alice attempts to resign from the election "primary-worker"
+```
+Campaigning in an election the actor already campaigns in is reported with an error
+wrapping `ErrAlreadyCampaigning`, and resigning from an election it does not campaign in
+with an error wrapping `ErrNotCampaigning`:
+```go
+err := anActor.AttemptsTo(resign.FromTheElection("primary-worker"))
+// the actor does not campaign in the election "primary-worker"
+```
+
 ## Questions
 
 ### The value of a key
@@ -363,6 +419,17 @@ for _, event := range events {
         fmt.Printf("%s expired at revision %d, it held %q\n", event.Key(), event.Revision(), event.PreviousValue())
     }
 }
+```
+
+### The leader of an election
+`LeaderOfTheElection` answers with the value the leader of the election was announced
+with, a `string`: the name of the actor leading it, or the value it campaigned with. An
+election without a leader answers with an empty value, so the question never fails on
+that account:
+```go
+err := anActor.Should(see.The(LeaderOfTheElection("primary-worker")).Should(be.EqualTo("Alice")))
+// Alice should see that the leader of the election "primary-worker" should be equal to "Alice"
+err := anActor.Should(see.The(LeaderOfTheElection("primary-worker")).Should(be.Empty[string]()))
 ```
 
 ## Resolutions
