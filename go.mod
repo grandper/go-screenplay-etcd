@@ -3,7 +3,7 @@ module github.com/grandper/go-screenplay-etcd
 go 1.27.2
 
 require (
-	github.com/grandper/go-screenplay/v2 v2.0.0-00010101000000-000000000000
+	github.com/grandper/go-screenplay/v2 v2.0.0
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/etcd/api/v3 v3.7.2
 	go.etcd.io/etcd/client/pkg/v3 v3.7.2
@@ -71,6 +71,3 @@ require (
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
-
-// go-screenplay v2.0.0 is not tagged yet: build against the release branch checked out next to this repository.
-replace github.com/grandper/go-screenplay/v2 => ../go-screenplay

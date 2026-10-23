@@ -303,10 +303,6 @@ linters:
           # Default: true
           skipRecvDeref: false
 
-    gomoddirectives:
-      # go-screenplay v2.0.0 is not tagged yet: go.mod replaces it with the release branch checked out next to this repository.
-      replace-local: true
-
     govet:
       # Enable all analyzers.
       # Default: false
