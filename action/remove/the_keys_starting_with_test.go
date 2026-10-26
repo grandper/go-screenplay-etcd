@@ -8,18 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheKeysStartingWith(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	client := server.NewClient(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("removes the keys starting with a prefix", func(t *testing.T) {
 		t.Run("leaving the other keys in place", func(t *testing.T) {
@@ -43,7 +43,7 @@ func TestTheKeysStartingWith(t *testing.T) {
 		t.Run("fails when the prefix is not provided", func(t *testing.T) {
 			err := alice.AttemptsTo(remove.TheKeysStartingWith(""))
 
-			require.ErrorIs(t, err, action.ErrPrefixNotProvided)
+			require.ErrorIs(t, err, etcd.ErrPrefixNotProvided)
 			require.EqualError(t, err, "the prefix must be provided")
 		})
 

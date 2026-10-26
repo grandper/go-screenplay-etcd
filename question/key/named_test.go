@@ -12,15 +12,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
 	"github.com/grandper/go-screenplay-etcd/action/put"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestNamed(t *testing.T) {
 	server := fixture.RunETCDServer(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("answers with an existing key and its metadata", func(t *testing.T) {
 		require.NoError(t, alice.AttemptsTo(
@@ -66,7 +66,7 @@ func TestNamed(t *testing.T) {
 	t.Run("fails when the key is not provided", func(t *testing.T) {
 		theKey, err := alice.AsksFor(key.Named(""))
 
-		require.ErrorIs(t, err, question.ErrKeyNotProvided)
+		require.ErrorIs(t, err, etcd.ErrKeyNotProvided)
 		assert.Nil(t, theKey)
 	})
 
@@ -82,6 +82,6 @@ func TestNamed(t *testing.T) {
 	})
 
 	t.Run("implements the question interface", func(t *testing.T) {
-		assert.Implements(t, (*screenplay.Question[*ability.Key])(nil), key.Named("app/status"))
+		assert.Implements(t, (*screenplay.Question[*etcd.Key])(nil), key.Named("app/status"))
 	})
 }

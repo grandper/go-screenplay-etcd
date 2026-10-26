@@ -3,7 +3,7 @@ package resign
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -29,7 +29,7 @@ func (a *fromTheElectionAction) String() string {
 // PerformAs resigns from the election.
 func (a *fromTheElectionAction) PerformAs(theActor *screenplay.Actor) error {
 	if a.name == "" {
-		return action.ErrNameNotProvided
+		return etcd.ErrNameNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToResign(theActor.Context(), a.name)

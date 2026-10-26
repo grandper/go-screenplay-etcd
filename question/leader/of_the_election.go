@@ -3,7 +3,7 @@ package leader
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
@@ -27,7 +27,7 @@ type ofTheElectionQuestion struct {
 // AnsweredBy returns the value of the leader of the election.
 func (q *ofTheElectionQuestion) AnsweredBy(theActor *screenplay.Actor) (string, error) {
 	if q.name == "" {
-		return "", question.ErrNameNotProvided
+		return "", etcd.ErrNameNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToRetrieveTheLeader(theActor.Context(), q.name)

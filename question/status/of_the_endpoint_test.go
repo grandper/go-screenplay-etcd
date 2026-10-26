@@ -11,14 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestOfTheEndpoint(t *testing.T) {
 	server := fixture.RunETCDServer(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("answers with the status of the endpoint", func(t *testing.T) {
 		theStatus, err := alice.AsksFor(status.OfTheEndpoint(server.Endpoint()))
@@ -34,13 +34,13 @@ func TestOfTheEndpoint(t *testing.T) {
 
 	t.Run("can be asserted on", func(t *testing.T) {
 		require.NoError(t, alice.Should(
-			see.The(status.OfTheEndpoint(server.Endpoint())).ShouldNotBe(be.Zero[*ability.EndpointStatus]()),
+			see.The(status.OfTheEndpoint(server.Endpoint())).ShouldNotBe(be.Zero[*etcd.EndpointStatus]()),
 		))
 	})
 
 	t.Run("fails when the endpoint cannot be reached", func(t *testing.T) {
 		bob := screenplay.ActorNamed("Bob").WhoCan(
-			ability.UseETCD().WithTheEndpoints("127.0.0.1:1").WithTimingOutAfter(500).Milliseconds(),
+			use.ETCD().WithTheEndpoints("127.0.0.1:1").WithTimingOutAfter(500).Milliseconds(),
 		)
 
 		theStatus, err := bob.AsksFor(status.OfTheEndpoint("127.0.0.1:1"))
@@ -52,7 +52,7 @@ func TestOfTheEndpoint(t *testing.T) {
 	t.Run("fails when the endpoint is not provided", func(t *testing.T) {
 		_, err := alice.AsksFor(status.OfTheEndpoint(""))
 
-		require.ErrorIs(t, err, question.ErrEndpointNotProvided)
+		require.ErrorIs(t, err, etcd.ErrEndpointNotProvided)
 	})
 
 	t.Run("fails when the actor cannot use etcd", func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestOfTheEndpoint(t *testing.T) {
 
 	t.Run("implements the question interface", func(t *testing.T) {
 		assert.Implements(t,
-			(*screenplay.Question[*ability.EndpointStatus])(nil),
+			(*screenplay.Question[*etcd.EndpointStatus])(nil),
 			status.OfTheEndpoint("localhost:2379"),
 		)
 	})

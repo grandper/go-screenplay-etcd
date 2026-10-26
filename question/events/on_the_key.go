@@ -3,9 +3,8 @@ package events
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -15,9 +14,9 @@ import (
 //
 //	err := anActor.Should(see.The(last.Of(events.OnTheKey("app/config/database"))).ShouldHave(been.Put()))
 //
-// The question fails with an error wrapping ability.ErrNotWatching when the
+// The question fails with an error wrapping etcd.ErrNotWatching when the
 // actor does not watch the key.
-func OnTheKey(key string) screenplay.Question[[]*ability.Event] {
+func OnTheKey(key string) screenplay.Question[[]*etcd.Event] {
 	return &onTheKeyQuestion{key: key}
 }
 
@@ -27,9 +26,9 @@ type onTheKeyQuestion struct {
 }
 
 // AnsweredBy returns the events recorded on the key.
-func (q *onTheKeyQuestion) AnsweredBy(theActor *screenplay.Actor) ([]*ability.Event, error) {
+func (q *onTheKeyQuestion) AnsweredBy(theActor *screenplay.Actor) ([]*etcd.Event, error) {
 	if q.key == "" {
-		return nil, question.ErrKeyNotProvided
+		return nil, etcd.ErrKeyNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToRetrieveTheEvents(q.key, false)
@@ -41,4 +40,4 @@ func (q *onTheKeyQuestion) String() string {
 }
 
 // onTheKeyQuestion implements the screenplay.Question interface.
-var _ screenplay.Question[[]*ability.Event] = (*onTheKeyQuestion)(nil)
+var _ screenplay.Question[[]*etcd.Event] = (*onTheKeyQuestion)(nil)

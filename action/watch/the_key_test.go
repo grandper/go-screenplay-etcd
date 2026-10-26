@@ -13,24 +13,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/action/watch"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheKey(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	production := screenplay.NewProduction(screenplay.WithTimeout(15 * time.Second))
 	stage := production.SetTheStage(screenplay.CastOfStandardActors())
-	bob := screenplay.ActorNamed("Bob").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	bob := screenplay.ActorNamed("Bob").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("watches a key", func(t *testing.T) {
 		t.Run("and records the changes another actor makes to it", func(t *testing.T) {
-			alice := stage.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			alice := stage.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 			t.Cleanup(func() { require.NoError(t, alice.Exit()) })
 
 			require.NoError(t, alice.AttemptsTo(watch.TheKey("app/config/database")))
@@ -42,7 +42,7 @@ func TestTheKey(t *testing.T) {
 
 			require.NoError(t, alice.AttemptsTo(
 				wait.UntilThe(events.OnTheKey("app/config/database")).
-					HappensToHave(length.Exactly[[]*ability.Event](3)),
+					HappensToHave(length.Exactly[[]*etcd.Event](3)),
 			))
 			theEvents, err := alice.AsksFor(events.OnTheKey("app/config/database"))
 			require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestTheKey(t *testing.T) {
 		})
 
 		t.Run("ignoring the changes made to other keys", func(t *testing.T) {
-			alice := stage.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			alice := stage.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 			t.Cleanup(func() { require.NoError(t, alice.Exit()) })
 
 			require.NoError(t, alice.AttemptsTo(watch.TheKey("app/config/cache")))
@@ -79,7 +79,7 @@ func TestTheKey(t *testing.T) {
 
 			require.NoError(t, alice.AttemptsTo(
 				wait.UntilThe(events.OnTheKey("app/config/cache")).
-					HappensToHave(length.Exactly[[]*ability.Event](1)),
+					HappensToHave(length.Exactly[[]*etcd.Event](1)),
 			))
 			theEvents, err := alice.AsksFor(events.OnTheKey("app/config/cache"))
 			require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestTheKey(t *testing.T) {
 		})
 
 		t.Run("telling a removal caused by the expiry of a lease from a plain removal", func(t *testing.T) {
-			alice := stage.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			alice := stage.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 			t.Cleanup(func() { require.NoError(t, alice.Exit()) })
 
 			require.NoError(t, alice.AttemptsTo(watch.TheKey("locks/batch-job"), watch.TheKey("locks/nightly-job")))
@@ -99,9 +99,9 @@ func TestTheKey(t *testing.T) {
 
 			require.NoError(t, alice.AttemptsTo(
 				wait.UntilThe(events.OnTheKey("locks/batch-job")).
-					HappensToHave(length.Exactly[[]*ability.Event](2)),
+					HappensToHave(length.Exactly[[]*etcd.Event](2)),
 				wait.UntilThe(events.OnTheKey("locks/nightly-job")).
-					HappensToHave(length.Exactly[[]*ability.Event](2)),
+					HappensToHave(length.Exactly[[]*etcd.Event](2)),
 			))
 			expired, err := alice.AsksFor(events.OnTheKey("locks/batch-job"))
 			require.NoError(t, err)
@@ -114,18 +114,18 @@ func TestTheKey(t *testing.T) {
 		})
 
 		t.Run("fails when the key is already watched", func(t *testing.T) {
-			alice := stage.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			alice := stage.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 			t.Cleanup(func() { require.NoError(t, alice.Exit()) })
 			require.NoError(t, alice.AttemptsTo(watch.TheKey("app/config/database")))
 
 			err := alice.AttemptsTo(watch.TheKey("app/config/database"))
 
-			require.ErrorIs(t, err, ability.ErrAlreadyWatching)
+			require.ErrorIs(t, err, etcd.ErrAlreadyWatching)
 			require.EqualError(t, err, `the key "app/config/database" is already watched`)
 		})
 
 		t.Run("fails when the key is not provided", func(t *testing.T) {
-			require.ErrorIs(t, bob.AttemptsTo(watch.TheKey("")), action.ErrKeyNotProvided)
+			require.ErrorIs(t, bob.AttemptsTo(watch.TheKey("")), etcd.ErrKeyNotProvided)
 		})
 
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestTheKey(t *testing.T) {
 	})
 
 	t.Run("stops watching when the actor exits", func(t *testing.T) {
-		alice := stage.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+		alice := stage.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 		require.NoError(t, alice.AttemptsTo(watch.TheKey("app/config/database")))
 
 		require.NoError(t, alice.Exit())

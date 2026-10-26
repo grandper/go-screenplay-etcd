@@ -13,7 +13,7 @@ import (
 //
 //	revision, err := anActor.AsksFor(revision.OfTheKey("app/config/database"))
 //
-// The question fails with an error wrapping question.ErrKeyNotFound when the key does
+// The question fails with an error wrapping etcd.ErrKeyNotFound when the key does
 // not exist.
 func OfTheKey(key string) screenplay.Question[int64] {
 	return &ofTheKeyQuestion{key: key}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -41,12 +41,12 @@ func (a *theKeysAction) String() string {
 // PerformAs removes the keys.
 func (a *theKeysAction) PerformAs(theActor *screenplay.Actor) error {
 	if len(a.keys) == 0 {
-		return action.ErrKeyNotProvided
+		return etcd.ErrKeyNotProvided
 	}
 
 	for _, key := range a.keys {
 		if key == "" {
-			return action.ErrKeyNotProvided
+			return etcd.ErrKeyNotProvided
 		}
 	}
 

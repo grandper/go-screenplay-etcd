@@ -8,17 +8,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/put"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheValues(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	client := server.NewClient(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 	config := map[string]string{
 		"app/config/database": "postgresql://localhost:5432",
 		"app/config/cache":    "redis://localhost:6379",
@@ -36,14 +36,14 @@ func TestTheValues(t *testing.T) {
 		})
 
 		t.Run("fails when no value is provided", func(t *testing.T) {
-			require.ErrorIs(t, alice.AttemptsTo(put.TheValues(nil)), action.ErrKeyNotProvided)
-			require.ErrorIs(t, alice.AttemptsTo(put.TheValues(map[string]string{})), action.ErrKeyNotProvided)
+			require.ErrorIs(t, alice.AttemptsTo(put.TheValues(nil)), etcd.ErrKeyNotProvided)
+			require.ErrorIs(t, alice.AttemptsTo(put.TheValues(map[string]string{})), etcd.ErrKeyNotProvided)
 		})
 
 		t.Run("fails when one of the keys is empty", func(t *testing.T) {
 			err := alice.AttemptsTo(put.TheValues(map[string]string{"app/status": "ready", "": "lost"}))
 
-			require.ErrorIs(t, err, action.ErrKeyNotProvided)
+			require.ErrorIs(t, err, etcd.ErrKeyNotProvided)
 		})
 
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {

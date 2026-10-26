@@ -18,7 +18,7 @@ import (
 //
 //	err := anActor.Should(see.The(ttl.OfTheKey("locks/batch-job")).Should(be.AtMost(10*time.Second)))
 //
-// The question fails with an error wrapping question.ErrKeyNotFound when the key does
+// The question fails with an error wrapping etcd.ErrKeyNotFound when the key does
 // not exist.
 func OfTheKey(key string) screenplay.Question[time.Duration] {
 	return &ofTheKeyQuestion{key: key}

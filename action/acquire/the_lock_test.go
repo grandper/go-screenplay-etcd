@@ -10,19 +10,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/acquire"
 	"github.com/grandper/go-screenplay-etcd/action/release"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheLock(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	newActor := func(t *testing.T, name string) *screenplay.Actor {
 		t.Helper()
-		actor := screenplay.ActorNamed(name).WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+		actor := screenplay.ActorNamed(name).WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 		t.Cleanup(func() { require.NoError(t, actor.Exit()) })
 
 		return actor
@@ -63,7 +63,7 @@ func TestTheLock(t *testing.T) {
 
 			err := bob.AttemptsTo(acquire.TheLock("deployment").WithoutWaiting())
 
-			require.ErrorIs(t, err, ability.ErrLocked)
+			require.ErrorIs(t, err, etcd.ErrLocked)
 		})
 
 		t.Run("waiting no longer than the context of the actor allows", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestTheLock(t *testing.T) {
 		})
 
 		t.Run("released when the actor exits", func(t *testing.T) {
-			alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 			bob := newActor(t, "Bob")
 			require.NoError(t, alice.AttemptsTo(acquire.TheLock("deployment")))
 
@@ -93,14 +93,14 @@ func TestTheLock(t *testing.T) {
 
 			err := alice.AttemptsTo(acquire.TheLock("deployment"))
 
-			require.ErrorIs(t, err, ability.ErrLockAlreadyHeld)
+			require.ErrorIs(t, err, etcd.ErrLockAlreadyHeld)
 			require.EqualError(t, err, `the lock "deployment" is already held by the actor`)
 		})
 
 		t.Run("fails when the name is not provided", func(t *testing.T) {
 			alice := newActor(t, "Alice")
 
-			require.ErrorIs(t, alice.AttemptsTo(acquire.TheLock("")), action.ErrNameNotProvided)
+			require.ErrorIs(t, alice.AttemptsTo(acquire.TheLock("")), etcd.ErrNameNotProvided)
 		})
 
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {

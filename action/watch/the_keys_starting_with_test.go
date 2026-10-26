@@ -13,23 +13,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/watch"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheKeysStartingWith(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	production := screenplay.NewProduction(screenplay.WithTimeout(15 * time.Second))
 	stage := production.SetTheStage(screenplay.CastOfStandardActors())
-	bob := screenplay.ActorNamed("Bob").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	bob := screenplay.ActorNamed("Bob").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("watches the keys starting with a prefix", func(t *testing.T) {
 		t.Run("and records the changes made to any of them", func(t *testing.T) {
-			alice := stage.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			alice := stage.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 			t.Cleanup(func() { require.NoError(t, alice.Exit()) })
 
 			require.NoError(t, alice.AttemptsTo(watch.TheKeysStartingWith("app/config/")))
@@ -41,7 +41,7 @@ func TestTheKeysStartingWith(t *testing.T) {
 
 			require.NoError(t, alice.AttemptsTo(
 				wait.UntilThe(events.OnTheKeysStartingWith("app/config/")).
-					HappensToHave(length.Exactly[[]*ability.Event](2)),
+					HappensToHave(length.Exactly[[]*etcd.Event](2)),
 			))
 			theEvents, err := alice.AsksFor(events.OnTheKeysStartingWith("app/config/"))
 			require.NoError(t, err)
@@ -50,18 +50,18 @@ func TestTheKeysStartingWith(t *testing.T) {
 		})
 
 		t.Run("fails when the prefix is already watched", func(t *testing.T) {
-			alice := stage.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			alice := stage.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 			t.Cleanup(func() { require.NoError(t, alice.Exit()) })
 			require.NoError(t, alice.AttemptsTo(watch.TheKeysStartingWith("app/config/")))
 
 			err := alice.AttemptsTo(watch.TheKeysStartingWith("app/config/"))
 
-			require.ErrorIs(t, err, ability.ErrAlreadyWatching)
+			require.ErrorIs(t, err, etcd.ErrAlreadyWatching)
 			require.EqualError(t, err, `the keys starting with "app/config/" are already watched`)
 		})
 
 		t.Run("can be combined with a watch of one of the keys", func(t *testing.T) {
-			alice := stage.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			alice := stage.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 			t.Cleanup(func() { require.NoError(t, alice.Exit()) })
 
 			require.NoError(t, alice.AttemptsTo(
@@ -71,7 +71,7 @@ func TestTheKeysStartingWith(t *testing.T) {
 		})
 
 		t.Run("fails when the prefix is not provided", func(t *testing.T) {
-			require.ErrorIs(t, bob.AttemptsTo(watch.TheKeysStartingWith("")), action.ErrPrefixNotProvided)
+			require.ErrorIs(t, bob.AttemptsTo(watch.TheKeysStartingWith("")), etcd.ErrPrefixNotProvided)
 		})
 
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {

@@ -3,7 +3,7 @@ package watch
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -30,7 +30,7 @@ func (a *theKeyAction) String() string {
 // PerformAs watches the key.
 func (a *theKeyAction) PerformAs(theActor *screenplay.Actor) error {
 	if a.key == "" {
-		return action.ErrKeyNotProvided
+		return etcd.ErrKeyNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToWatch(theActor.Context(), a.key, false)

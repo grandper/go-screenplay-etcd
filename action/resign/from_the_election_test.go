@@ -12,19 +12,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/campaign"
 	"github.com/grandper/go-screenplay-etcd/action/resign"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestFromTheElection(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	newActor := func(t *testing.T, name string) *screenplay.Actor {
 		t.Helper()
-		actor := screenplay.ActorNamed(name).WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+		actor := screenplay.ActorNamed(name).WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 		t.Cleanup(func() { require.NoError(t, actor.Exit()) })
 
 		return actor
@@ -58,14 +58,14 @@ func TestFromTheElection(t *testing.T) {
 
 			err := alice.AttemptsTo(resign.FromTheElection("primary-worker"))
 
-			require.ErrorIs(t, err, ability.ErrNotCampaigning)
+			require.ErrorIs(t, err, etcd.ErrNotCampaigning)
 			require.EqualError(t, err, `the actor does not campaign in the election "primary-worker"`)
 		})
 
 		t.Run("fails when the name is not provided", func(t *testing.T) {
 			alice := newActor(t, "Alice")
 
-			require.ErrorIs(t, alice.AttemptsTo(resign.FromTheElection("")), action.ErrNameNotProvided)
+			require.ErrorIs(t, alice.AttemptsTo(resign.FromTheElection("")), etcd.ErrNameNotProvided)
 		})
 
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {

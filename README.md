@@ -7,7 +7,7 @@
 
 This project is an extension of [go-screenplay](https://github.com/grandper/go-screenplay) to drive an [etcd](https://etcd.io) cluster. It bundles the ability to use etcd together with the actions, questions and resolutions that go with it, so you test a system built on etcd with the same screenplay vocabulary you use everywhere else. A test reads as English, and everything the actor does is narrated:
 ```go
-actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints("localhost:2379"))
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("localhost:2379"))
 
 err := actor.AttemptsTo(put.TheValue("ready").ForTheKey("app/status"))
 // Alice attempts to put the value "ready" for the key "app/status"
@@ -22,7 +22,7 @@ go get github.com/grandper/go-screenplay-etcd
 It requires go-screenplay v2, and drives etcd v3 through its official client, `go.etcd.io/etcd/client/v3`.
 
 ## Ability
-This package provides the `UseETCD` ability, which allows an actor to interact with an etcd cluster. The `UseETCD` ability is given the endpoints of the cluster with `WithTheEndpoints("localhost:2379")`, reading "use etcd with the endpoints localhost:2379", or a client of your own with `WithTheClient(client)`, reading "use etcd with the client".
+This extension provides one ability, `use.ETCD()`, which allows an actor to interact with an etcd cluster; given to an actor with `WhoCan`, it reads "who can use etcd". The ability is given the endpoints of the cluster with `WithTheEndpoints("localhost:2379")`, reading "use etcd with the endpoints localhost:2379", or a client of your own with `WithTheClient(client)`, reading "use etcd with the client".
 
 First, import the package:
 ```go
@@ -34,7 +34,7 @@ import (
     "github.com/grandper/go-screenplay/v2/question/last"
     "github.com/grandper/go-screenplay/v2/question/number"
     "github.com/grandper/go-screenplay/v2/resolution/be"
-    "github.com/grandper/go-screenplay-etcd/ability"
+    "github.com/grandper/go-screenplay-etcd/etcd"
     "github.com/grandper/go-screenplay-etcd/action/acquire"
     "github.com/grandper/go-screenplay-etcd/action/campaign"
     "github.com/grandper/go-screenplay-etcd/action/put"
@@ -55,16 +55,17 @@ import (
     "github.com/grandper/go-screenplay-etcd/question/values"
     "github.com/grandper/go-screenplay-etcd/resolution/been"
     "github.com/grandper/go-screenplay-etcd/resolution/exist"
+    "github.com/grandper/go-screenplay-etcd/use"
 )
 ```
-Then create an actor and give it the `UseETCD` ability, with the endpoints of the cluster in the form `host:port`:
+Then create an actor who can use etcd, with the endpoints of the cluster in the form `host:port`:
 ```go
-actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints("localhost:2379"))
-actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints("etcd-1:2379", "etcd-2:2379", "etcd-3:2379"))
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("localhost:2379"))
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("etcd-1:2379", "etcd-2:2379", "etcd-3:2379"))
 ```
-The connection is opened the first time the actor uses the ability, so an unreachable cluster is reported by the first action, with an error wrapping `ability.ErrFailedToConnect`. An actor given no endpoint fails every action with `ability.ErrNoEndpointProvided`:
+The connection is opened the first time the actor uses the ability, so an unreachable cluster is reported by the first action, with an error wrapping `etcd.ErrFailedToConnect`. An actor given no endpoint fails every action with `etcd.ErrNoEndpointProvided`:
 ```go
-actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD())
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD())
 
 err := actor.AttemptsTo(put.TheValue("ready").ForTheKey("app/status"))
 // no etcd endpoint was provided to the ability
@@ -73,12 +74,12 @@ Alternatively, give the ability a client you created yourself, for example to au
 ```go
 client, _ := clientv3.New(clientv3.Config{Endpoints: []string{"localhost:2379"}, Username: "alice", Password: "s3cret"})
 
-actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheClient(client))
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheClient(client))
 ```
 The ability is configured fluently, and the chain reads as English: "use etcd with the endpoints localhost:2379 with the namespace test-run-42/ with timing out after 5 seconds":
 ```go
 actor := screenplay.ActorNamed("Alice").WhoCan(
-    ability.UseETCD().
+    use.ETCD().
         WithTheEndpoints("localhost:2379").
         WithTheNamespace("test-run-42/").
         WithTimingOutAfter(5).Seconds(),
@@ -91,19 +92,19 @@ err := actor.AttemptsTo(put.TheValue("postgresql://localhost:5432").ForTheKey("a
 ```
 `WithTimingOutAfter` bounds every operation of the actor; without it, an operation is bounded only by the deadline of the actor's context (see `screenplay.WithContext`). The timeout is closed by its unit, `Milliseconds`, `Seconds` or `Minutes`, each with its singular form so that one unit reads as English. An operation that outlasts the timeout fails with `context.DeadlineExceeded`:
 ```go
-actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints("localhost:2379").WithTimingOutAfter(500).Milliseconds())
-actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints("localhost:2379").WithTimingOutAfter(1).Minute())
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("localhost:2379").WithTimingOutAfter(500).Milliseconds())
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("localhost:2379").WithTimingOutAfter(1).Minute())
 ```
 A cluster that secures its connections with TLS is given the authority that signed its certificates with `WithTheCertificateAuthority`; without it, the authorities of the system are trusted. A cluster that authenticates its clients with mutual TLS is also given the certificate the actor presents, with `WithTheClientCertificate` closed by `AndTheKey`. All three are PEM files:
 ```go
 actor := screenplay.ActorNamed("Alice").WhoCan(
-    ability.UseETCD().
+    use.ETCD().
         WithTheEndpoints("etcd.example.com:2379").
         WithTheCertificateAuthority("ca.crt").
         WithTheClientCertificate("client.crt").AndTheKey("client.key"),
 )
 ```
-A file that cannot be read, or that holds no certificate, is reported by the first action, with an error wrapping both `ability.ErrFailedToConnect` and `ability.ErrFailedToLoadTheCertificates`:
+A file that cannot be read, or that holds no certificate, is reported by the first action, with an error wrapping both `etcd.ErrFailedToConnect` and `etcd.ErrFailedToLoadTheCertificates`:
 ```go
 err := actor.AttemptsTo(put.TheValue("ready").ForTheKey("app/status"))
 // failed to connect to the etcd server: failed to load the certificates: open client.crt: no such file or directory
@@ -128,7 +129,7 @@ The actions live in packages named after their verb, so that a statement reads a
 err := actor.AttemptsTo(put.TheValue("ready").ForTheKey("app/status"))
 // Alice attempts to put the value "ready" for the key "app/status"
 ```
-Nothing panics when an action is built. A mistake, such as an empty key, is reported when the actor performs the action, with an error of the `action` package: `action.ErrKeyNotProvided`, `action.ErrPrefixNotProvided` or `action.ErrNameNotProvided`.
+Nothing panics when an action is built. A mistake, such as an empty key, is reported when the actor performs the action, with an error of the `etcd` package: `etcd.ErrKeyNotProvided`, `etcd.ErrPrefixNotProvided` or `etcd.ErrNameNotProvided`.
 
 The core actions compose with the ones of this extension as with any other: `keep.TryingTo` retries a put against a cluster that is still starting, `proceed.ConcurrentlyTo` runs several actions at once, and `wait.UntilThe` waits for a question of this extension to answer as expected:
 ```go
@@ -142,7 +143,7 @@ Puts a value for the key given with `ForTheKey`. The key is created when it does
 err := actor.AttemptsTo(put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database"))
 // Alice attempts to put the value "postgresql://localhost:5432" for the key "app/config/database"
 ```
-It fails with `action.ErrKeyNotProvided` when the key is missing or empty:
+It fails with `etcd.ErrKeyNotProvided` when the key is missing or empty:
 ```go
 err := actor.AttemptsTo(put.TheValue("postgresql://localhost:5432"))
 // the key must be provided
@@ -165,13 +166,13 @@ err := actor.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").Expiri
 
 err = actor.Exit() // the renewals stop, and the key expires ten seconds later
 ```
-To initialize a key only when no one else did, close the statement with `IfTheKeyIsAbsent`: the check and the put happen in one transaction, and a key that exists makes the action fail with an error wrapping `action.ErrKeyAlreadyExists`, leaving the cluster untouched:
+To initialize a key only when no one else did, close the statement with `IfTheKeyIsAbsent`: the check and the put happen in one transaction, and a key that exists makes the action fail with an error wrapping `etcd.ErrKeyAlreadyExists`, leaving the cluster untouched:
 ```go
 err := actor.AttemptsTo(put.TheValue("initial").ForTheKey("app/config/flag").IfTheKeyIsAbsent())
 // Alice attempts to put the value "initial" for the key "app/config/flag" if the key is absent
 // fails: the key "app/config/flag" already exists
 ```
-To update a key only when nobody changed it since you read it, ask for its revision with `revision.OfTheKey`, then close the statement with `IfTheKeyIsUnchangedSinceTheRevision`. A key modified in between makes the action fail with an error wrapping `action.ErrKeyModified`, so a read-modify-write loop knows to read again. The revision zero means that the key must not exist, which is another way of saying `IfTheKeyIsAbsent`:
+To update a key only when nobody changed it since you read it, ask for its revision with `revision.OfTheKey`, then close the statement with `IfTheKeyIsUnchangedSinceTheRevision`. A key modified in between makes the action fail with an error wrapping `etcd.ErrKeyModified`, so a read-modify-write loop knows to read again. The revision zero means that the key must not exist, which is another way of saying `IfTheKeyIsAbsent`:
 ```go
 lastModification, _ := actor.AsksFor(revision.OfTheKey("app/config/counter"))
 
@@ -194,7 +195,7 @@ err := actor.AttemptsTo(put.TheValues(map[string]string{
 }))
 // Alice attempts to put the values "app/config/cache" = "redis://localhost:6379", "app/config/database" = "postgresql://localhost:5432"
 ```
-It fails with `action.ErrKeyNotProvided` when the map is empty or holds an empty key. The values are kept secret the same way as a single one; the keys are still narrated:
+It fails with `etcd.ErrKeyNotProvided` when the map is empty or holds an empty key. The values are kept secret the same way as a single one; the keys are still narrated:
 ```go
 err := actor.AttemptsTo(put.TheValues(credentials).Secretly())
 // Alice attempts to put the values <secret> for the keys "app/config/password", "app/config/username"
@@ -206,7 +207,7 @@ Removes a key. Removing a key that does not exist is not an error, so a cleanup 
 err := actor.AttemptsTo(remove.TheKey("app/config/cache"))
 // Alice attempts to remove the key "app/config/cache"
 ```
-The key is removed only if nobody changed it since a revision with `IfUnchangedSinceTheRevision`, which fails with an error wrapping `action.ErrKeyModified` as the conditional put does:
+The key is removed only if nobody changed it since a revision with `IfUnchangedSinceTheRevision`, which fails with an error wrapping `etcd.ErrKeyModified` as the conditional put does:
 ```go
 err := actor.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(lastModification))
 // Alice attempts to remove the key "app/config/counter" if unchanged since the revision 42
@@ -216,7 +217,7 @@ err := actor.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheR
 err := actor.AttemptsTo(remove.TheKeys("app/config/cache", "app/config/database"))
 // Alice attempts to remove the keys "app/config/cache", "app/config/database"
 ```
-Both fail with `action.ErrKeyNotProvided` when a key is empty, or when no key is given at all:
+Both fail with `etcd.ErrKeyNotProvided` when a key is empty, or when no key is given at all:
 ```go
 err := actor.AttemptsTo(remove.TheKeys())
 // the key must be provided
@@ -228,7 +229,7 @@ Removes every key starting with a prefix:
 err := actor.AttemptsTo(remove.TheKeysStartingWith("app/config/"))
 // Alice attempts to remove the keys starting with "app/config/"
 ```
-It fails with `action.ErrPrefixNotProvided` when the prefix is empty, which would reach every key of the cluster:
+It fails with `etcd.ErrPrefixNotProvided` when the prefix is empty, which would reach every key of the cluster:
 ```go
 err := actor.AttemptsTo(remove.TheKeysStartingWith(""))
 // the prefix must be provided
@@ -245,7 +246,7 @@ err := actor.AttemptsTo(watch.TheKey("app/config/database"))
 err := actor.AttemptsTo(watch.TheKeysStartingWith("app/config/"))
 // Alice attempts to watch the keys starting with "app/config/"
 ```
-Watching twice the same key, or the same prefix, fails with an error wrapping `ability.ErrAlreadyWatching`; a watch of a key and a watch of the keys starting with it are two different watches:
+Watching twice the same key, or the same prefix, fails with an error wrapping `etcd.ErrAlreadyWatching`; a watch of a key and a watch of the keys starting with it are two different watches:
 ```go
 err := actor.AttemptsTo(watch.TheKey("app/config/database"), watch.TheKey("app/config/database"))
 // the key "app/config/database" is already watched
@@ -257,13 +258,13 @@ Acquires the distributed lock of the given name, which only one actor at a time 
 err := actor.AttemptsTo(acquire.TheLock("deployment"))
 // Alice attempts to acquire the lock "deployment"
 ```
-To fail instead of waiting when another actor holds the lock, close the statement with `WithoutWaiting`; the action then fails with `ability.ErrLocked`, the error of the etcd client:
+To fail instead of waiting when another actor holds the lock, close the statement with `WithoutWaiting`; the action then fails with `etcd.ErrLocked`, the error of the etcd client:
 ```go
 err := anotherActor.AttemptsTo(acquire.TheLock("deployment").WithoutWaiting())
 // Bob attempts to acquire the lock "deployment" without waiting
 // fails: mutex: Locked by another session
 ```
-Acquiring a lock the actor already holds fails with an error wrapping `ability.ErrLockAlreadyHeld`, and an empty name with `action.ErrNameNotProvided`. The locks of an actor share one session, a lease the client keeps alive: should the actor lose its connection to the cluster for longer than the session allows, the cluster releases its locks.
+Acquiring a lock the actor already holds fails with an error wrapping `etcd.ErrLockAlreadyHeld`, and an empty name with `etcd.ErrNameNotProvided`. The locks of an actor share one session, a lease the client keeps alive: should the actor lose its connection to the cluster for longer than the session allows, the cluster releases its locks.
 
 ### release.TheLock
 Releases a lock the actor holds; a lock is also released when the actor exits:
@@ -271,7 +272,7 @@ Releases a lock the actor holds; a lock is also released when the actor exits:
 err := actor.AttemptsTo(release.TheLock("deployment"))
 // Alice attempts to release the lock "deployment"
 ```
-It fails with an error wrapping `ability.ErrLockNotHeld` when the actor does not hold the lock:
+It fails with an error wrapping `etcd.ErrLockNotHeld` when the actor does not hold the lock:
 ```go
 err := actor.AttemptsTo(release.TheLock("deployment"))
 // the lock "deployment" is not held by the actor
@@ -285,7 +286,7 @@ err := actor.AttemptsTo(campaign.InTheElection("primary-worker"))
 err := actor.AttemptsTo(campaign.InTheElection("primary-worker").WithTheValue("node-1"))
 // Alice attempts to campaign in the election "primary-worker" with the value "node-1"
 ```
-Campaigning in an election the actor already campaigns in fails with an error wrapping `ability.ErrAlreadyCampaigning`, and an empty name with `action.ErrNameNotProvided`.
+Campaigning in an election the actor already campaigns in fails with an error wrapping `etcd.ErrAlreadyCampaigning`, and an empty name with `etcd.ErrNameNotProvided`.
 
 ### resign.FromTheElection
 Gives up the leadership of an election the actor campaigns in; the actor also resigns when it exits:
@@ -293,7 +294,7 @@ Gives up the leadership of an election the actor campaigns in; the actor also re
 err := actor.AttemptsTo(resign.FromTheElection("primary-worker"))
 // Alice attempts to resign from the election "primary-worker"
 ```
-It fails with an error wrapping `ability.ErrNotCampaigning` when the actor does not campaign in the election:
+It fails with an error wrapping `etcd.ErrNotCampaigning` when the actor does not campaign in the election:
 ```go
 err := actor.AttemptsTo(resign.FromTheElection("primary-worker"))
 // the actor does not campaign in the election "primary-worker"
@@ -309,23 +310,23 @@ err := actor.Should(see.The(value.OfTheKey("app/config/database")).Should(be.Equ
 // Alice should see that the value of the key "app/config/database" should be equal to "postgresql://localhost:5432"
 databaseURL, err := actor.AsksFor(value.OfTheKey("app/config/database")) // databaseURL is a string
 ```
-It fails with an error wrapping `question.ErrKeyNotFound` when the key does not exist, and with `question.ErrKeyNotProvided` when the key is empty:
+It fails with an error wrapping `etcd.ErrKeyNotFound` when the key does not exist, and with `etcd.ErrKeyNotProvided` when the key is empty:
 ```go
 missing, err := actor.AsksFor(value.OfTheKey("does/not/exist"))
 // the key "does/not/exist" was not found
 ```
 
 ### key.Named
-`key.Named(key)` answers with an `*ability.Key`, whether the key exists or not, so you assert on its existence with the `exist.InETCD` resolution:
+`key.Named(key)` answers with an `*etcd.Key`, whether the key exists or not, so you assert on its existence with the `exist.InETCD` resolution:
 ```go
 err := actor.Should(see.The(key.Named("app/status")).Should(exist.InETCD()))
 // Alice should see that the key named "app/status" should exist in etcd
 err := actor.Should(see.The(key.Named("app/status")).ShouldNot(exist.InETCD()))
 // Alice should see that the key named "app/status" should not exist in etcd
 ```
-An `*ability.Key` is read through `Name()` and `Exists()`, then `Value()`, `Version()` (the number of times the key was put since it was created), `CreateRevision()` and `ModRevision()` (the revisions of the cluster at which it was created and last modified), and `Lease()` (the ID of the lease attached to it, zero without a lease). They are all zero or empty when the key does not exist:
+An `*etcd.Key` is read through `Name()` and `Exists()`, then `Value()`, `Version()` (the number of times the key was put since it was created), `CreateRevision()` and `ModRevision()` (the revisions of the cluster at which it was created and last modified), and `Lease()` (the ID of the lease attached to it, zero without a lease). They are all zero or empty when the key does not exist:
 ```go
-database, _ := actor.AsksFor(key.Named("app/config/database")) // database is an *ability.Key
+database, _ := actor.AsksFor(key.Named("app/config/database")) // database is an *etcd.Key
 
 if database.Exists() && database.Version() > 1 {
     fmt.Printf("%s was updated %d times, last at revision %d\n", database.Name(), database.Version()-1, database.ModRevision())
@@ -358,30 +359,30 @@ err := actor.Should(see.The(values.OfTheKeysStartingWith("app/config/")).Should(
 err := actor.Should(see.The(number.Of(keys.StartingWith("app/config/"))).Should(be.EqualTo(2)))
 // Alice should see that the number of keys starting with "app/config/" should be equal to 2
 ```
-When no key starts with the prefix, the slice and the map are empty: neither question fails. Both fail with `question.ErrPrefixNotProvided` when the prefix is empty:
+When no key starts with the prefix, the slice and the map are empty: neither question fails. Both fail with `etcd.ErrPrefixNotProvided` when the prefix is empty:
 ```go
 err := actor.Should(see.The(values.OfTheKeysStartingWith("app/config/")).Should(be.Empty[map[string]string]()))
 ```
 
 ### events.OnTheKey
-`events.OnTheKey(key)` answers with the changes recorded on a key the actor watches, a `[]*ability.Event` in the order they happened, and `events.OnTheKeysStartingWith(prefix)` with the changes recorded on a watched prefix. Both answer with an empty slice when nothing happened yet, and compose with the core `wait.UntilThe`, `length`, `first` and `last` packages, and with the `been` resolutions of this extension:
+`events.OnTheKey(key)` answers with the changes recorded on a key the actor watches, a `[]*etcd.Event` in the order they happened, and `events.OnTheKeysStartingWith(prefix)` with the changes recorded on a watched prefix. Both answer with an empty slice when nothing happened yet, and compose with the core `wait.UntilThe`, `length`, `first` and `last` packages, and with the `been` resolutions of this extension:
 ```go
 err := actor.AttemptsTo(
     watch.TheKey("app/config/database"),
-    wait.UntilThe(events.OnTheKey("app/config/database")).HappensToHave(length.AtLeast[[]*ability.Event](1)),
+    wait.UntilThe(events.OnTheKey("app/config/database")).HappensToHave(length.AtLeast[[]*etcd.Event](1)),
 )
 // Alice attempts to wait until the events on the key "app/config/database" happens to have length at least 1
 err = actor.Should(see.The(last.Of(events.OnTheKey("app/config/database"))).ShouldHave(been.Put()))
 // Alice should see that the last of events on the key "app/config/database" should have been put
 ```
-They fail with an error wrapping `ability.ErrNotWatching` when the actor does not watch the key or the prefix:
+They fail with an error wrapping `etcd.ErrNotWatching` when the actor does not watch the key or the prefix:
 ```go
 recorded, err := actor.AsksFor(events.OnTheKey("app/config/cache"))
 // the key "app/config/cache" is not watched
 ```
-An `*ability.Event` is read through `Key()`, `IsPut()` and `IsDelete()`, `Value()` (empty for a delete), `PreviousValue()` (empty when the event created the key), `Revision()`, `Version()` (zero after a delete), and `CausedByLeaseExpiry()`, which tells a key removed because its lease expired from a key an actor removed:
+An `*etcd.Event` is read through `Key()`, `IsPut()` and `IsDelete()`, `Value()` (empty for a delete), `PreviousValue()` (empty when the event created the key), `Revision()`, `Version()` (zero after a delete), and `CausedByLeaseExpiry()`, which tells a key removed because its lease expired from a key an actor removed:
 ```go
-recorded, _ := actor.AsksFor(events.OnTheKey("locks/batch-job")) // recorded is a []*ability.Event
+recorded, _ := actor.AsksFor(events.OnTheKey("locks/batch-job")) // recorded is a []*etcd.Event
 
 for _, event := range recorded {
     if event.IsDelete() && event.CausedByLeaseExpiry() {
@@ -399,17 +400,17 @@ err := actor.Should(see.The(leader.OfTheElection("primary-worker")).Should(be.Em
 ```
 
 ### status.OfTheEndpoint
-`status.OfTheEndpoint(endpoint)` answers with the `*ability.EndpointStatus` of the member of the cluster listening on the endpoint, the way to check that the cluster is up before a scenario starts, and fails when the member cannot be reached. The status is read through `Version()`, `Leader()` (the ID of the member believed to lead the cluster, zero when none is known), `DBSize()` in bytes, `IsLearner()`, and `Errors()`, the alarms and health problems the member reports:
+`status.OfTheEndpoint(endpoint)` answers with the `*etcd.EndpointStatus` of the member of the cluster listening on the endpoint, the way to check that the cluster is up before a scenario starts, and fails when the member cannot be reached. The status is read through `Version()`, `Leader()` (the ID of the member believed to lead the cluster, zero when none is known), `DBSize()` in bytes, `IsLearner()`, and `Errors()`, the alarms and health problems the member reports:
 ```go
-member, err := actor.AsksFor(status.OfTheEndpoint("localhost:2379")) // member is an *ability.EndpointStatus
+member, err := actor.AsksFor(status.OfTheEndpoint("localhost:2379")) // member is an *etcd.EndpointStatus
 // Alice asks for the status of the endpoint "localhost:2379"
-err = actor.Should(see.The(status.OfTheEndpoint("localhost:2379")).ShouldNotBe(be.Zero[*ability.EndpointStatus]()))
+err = actor.Should(see.The(status.OfTheEndpoint("localhost:2379")).ShouldNotBe(be.Zero[*etcd.EndpointStatus]()))
 ```
 
 ### alarms.OfTheCluster
-`alarms.OfTheCluster()` answers with the alarms raised by the members of the cluster, a `[]*ability.Alarm` read through `MemberID()` and `Type()` (`NOSPACE` or `CORRUPT`), empty on a healthy cluster:
+`alarms.OfTheCluster()` answers with the alarms raised by the members of the cluster, a `[]*etcd.Alarm` read through `MemberID()` and `Type()` (`NOSPACE` or `CORRUPT`), empty on a healthy cluster:
 ```go
-err := actor.Should(see.The(alarms.OfTheCluster()).Should(be.Empty[[]*ability.Alarm]()))
+err := actor.Should(see.The(alarms.OfTheCluster()).Should(be.Empty[[]*etcd.Alarm]()))
 // Alice should see that the alarms of the cluster should be empty
 ```
 
@@ -451,12 +452,12 @@ The `fixture` package runs an in-process etcd server so scenarios can run withou
 ```go
 // Runs an embedded server; the actor connects to its endpoint.
 server := fixture.RunETCDServer(t)
-actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 // Runs an embedded server secured with mutual TLS, with certificates generated for the test.
 server := fixture.RunSecureETCDServer(t)
 actor := screenplay.ActorNamed("Alice").WhoCan(
-    ability.UseETCD().
+    use.ETCD().
         WithTheEndpoints(server.Endpoint()).
         WithTheCertificateAuthority(server.CertificateAuthority()).
         WithTheClientCertificate(server.ClientCertificate()).AndTheKey(server.ClientKey()),
@@ -469,12 +470,12 @@ A complete scenario, from spinning up the embedded server to asserting on the ke
 ```go
 func TestNoticesAConfigurationChange(t *testing.T) {
     server := fixture.RunETCDServer(t)
-    actor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+    actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
     require.NoError(t, actor.AttemptsTo(
         watch.TheKey("app/config/database"),
         put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database"),
-        wait.UntilThe(events.OnTheKey("app/config/database")).HappensToHave(length.AtLeast[[]*ability.Event](1)),
+        wait.UntilThe(events.OnTheKey("app/config/database")).HappensToHave(length.AtLeast[[]*etcd.Event](1)),
     ))
 
     require.NoError(t, actor.Should(

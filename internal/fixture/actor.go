@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 // NarratedActor creates an actor whose narration is recorded by the recorder,
@@ -20,7 +20,7 @@ func NarratedActor(name string, recorder *screenplayfixture.Recorder, endpoint s
 
 	return production.SetTheStage(screenplay.CastOfStandardActors()).
 		ActorNamed(name).
-		WhoCan(ability.UseETCD().WithTheEndpoints(endpoint))
+		WhoCan(use.ETCD().WithTheEndpoints(endpoint))
 }
 
 // ValueOf returns the value the key holds, read with the client, and fails

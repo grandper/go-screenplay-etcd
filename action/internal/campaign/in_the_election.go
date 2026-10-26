@@ -3,7 +3,7 @@ package campaign
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -48,7 +48,7 @@ func (a *InTheElectionAction) String() string {
 // PerformAs campaigns in the election.
 func (a *InTheElectionAction) PerformAs(theActor *screenplay.Actor) error {
 	if a.name == "" {
-		return action.ErrNameNotProvided
+		return etcd.ErrNameNotProvided
 	}
 
 	value := a.value

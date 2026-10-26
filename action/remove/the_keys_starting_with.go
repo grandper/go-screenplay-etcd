@@ -3,7 +3,7 @@ package remove
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -29,7 +29,7 @@ func (a *theKeysStartingWithAction) String() string {
 // PerformAs removes the keys starting with the prefix.
 func (a *theKeysStartingWithAction) PerformAs(theActor *screenplay.Actor) error {
 	if a.prefix == "" {
-		return action.ErrPrefixNotProvided
+		return etcd.ErrPrefixNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToRemoveTheKeysStartingWith(theActor.Context(), a.prefix)

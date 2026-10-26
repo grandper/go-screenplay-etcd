@@ -5,18 +5,17 @@ import (
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
-	"github.com/grandper/go-screenplay-etcd/question"
 )
 
 // RetrieveTheExistingKey retrieves the key for the questions that need it to
-// exist: an empty key fails with question.ErrKeyNotProvided, and a key that
-// does not exist with an error wrapping question.ErrKeyNotFound.
-func RetrieveTheExistingKey(theActor *screenplay.Actor, name string) (*ability.Key, error) {
+// exist: an empty key fails with etcd.ErrKeyNotProvided, and a key that
+// does not exist with an error wrapping etcd.ErrKeyNotFound.
+func RetrieveTheExistingKey(theActor *screenplay.Actor, name string) (*etcd.Key, error) {
 	if name == "" {
-		return nil, question.ErrKeyNotProvided
+		return nil, etcd.ErrKeyNotProvided
 	}
 
 	key, err := impl.TheAbilityOf(theActor).ToRetrieveTheKey(theActor.Context(), name)
@@ -25,7 +24,7 @@ func RetrieveTheExistingKey(theActor *screenplay.Actor, name string) (*ability.K
 	}
 
 	if !key.Exists() {
-		return nil, fmt.Errorf("the key %s %w", verdict.Describe(name), question.ErrKeyNotFound)
+		return nil, fmt.Errorf("the key %s %w", verdict.Describe(name), etcd.ErrKeyNotFound)
 	}
 
 	return key, nil

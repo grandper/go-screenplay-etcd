@@ -5,7 +5,7 @@ import (
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 )
 
 // Deleted creates a resolution to tell if an event removed its key, whatever
@@ -34,7 +34,7 @@ func (r *DeletedResolution) ByTheExpiryOfItsLease() *DeletedResolution {
 }
 
 // Inspect returns nil when the event removed its key, as required.
-func (r *DeletedResolution) Inspect(event *ability.Event) error {
+func (r *DeletedResolution) Inspect(event *etcd.Event) error {
 	if event == nil {
 		return errors.New("there is no event")
 	}
@@ -60,4 +60,4 @@ func (r *DeletedResolution) String() string {
 }
 
 // DeletedResolution implements the screenplay.Resolution interface.
-var _ screenplay.Resolution[*ability.Event] = (*DeletedResolution)(nil)
+var _ screenplay.Resolution[*etcd.Event] = (*DeletedResolution)(nil)

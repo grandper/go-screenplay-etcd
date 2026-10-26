@@ -7,7 +7,7 @@ import (
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -71,11 +71,11 @@ func (a *TheValuesAction) String() string {
 // PerformAs puts the values.
 func (a *TheValuesAction) PerformAs(theActor *screenplay.Actor) error {
 	if len(a.values) == 0 {
-		return action.ErrKeyNotProvided
+		return etcd.ErrKeyNotProvided
 	}
 
 	if _, hasAnEmptyKey := a.values[""]; hasAnEmptyKey {
-		return action.ErrKeyNotProvided
+		return etcd.ErrKeyNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToPutTheValues(theActor.Context(), a.values)

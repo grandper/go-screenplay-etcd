@@ -3,18 +3,17 @@ package key
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
 
 // Named asks about a key, whether it exists or not: its value and its
-// metadata are read through the *ability.Key it answers with.
+// metadata are read through the *etcd.Key it answers with.
 //
 //	err := anActor.Should(see.The(key.Named("app/status")).Should(exist.InETCD()))
-func Named(key string) screenplay.Question[*ability.Key] {
+func Named(key string) screenplay.Question[*etcd.Key] {
 	return &namedQuestion{key: key}
 }
 
@@ -24,9 +23,9 @@ type namedQuestion struct {
 }
 
 // AnsweredBy returns the key, which exists or not.
-func (q *namedQuestion) AnsweredBy(theActor *screenplay.Actor) (*ability.Key, error) {
+func (q *namedQuestion) AnsweredBy(theActor *screenplay.Actor) (*etcd.Key, error) {
 	if q.key == "" {
-		return nil, question.ErrKeyNotProvided
+		return nil, etcd.ErrKeyNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToRetrieveTheKey(theActor.Context(), q.key)
@@ -38,4 +37,4 @@ func (q *namedQuestion) String() string {
 }
 
 // namedQuestion implements the screenplay.Question interface.
-var _ screenplay.Question[*ability.Key] = (*namedQuestion)(nil)
+var _ screenplay.Question[*etcd.Key] = (*namedQuestion)(nil)

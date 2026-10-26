@@ -9,14 +9,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/question/alarms"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestOfTheCluster(t *testing.T) {
 	server := fixture.RunETCDServer(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("answers with no alarm on a healthy cluster", func(t *testing.T) {
 		theAlarms, err := alice.AsksFor(alarms.OfTheCluster())
@@ -27,7 +28,7 @@ func TestOfTheCluster(t *testing.T) {
 	})
 
 	t.Run("can be asserted on", func(t *testing.T) {
-		require.NoError(t, alice.Should(see.The(alarms.OfTheCluster()).Should(be.Empty[[]*ability.Alarm]())))
+		require.NoError(t, alice.Should(see.The(alarms.OfTheCluster()).Should(be.Empty[[]*etcd.Alarm]())))
 	})
 
 	t.Run("fails when the actor cannot use etcd", func(t *testing.T) {
@@ -41,6 +42,6 @@ func TestOfTheCluster(t *testing.T) {
 	})
 
 	t.Run("implements the question interface", func(t *testing.T) {
-		assert.Implements(t, (*screenplay.Question[[]*ability.Alarm])(nil), alarms.OfTheCluster())
+		assert.Implements(t, (*screenplay.Question[[]*etcd.Alarm])(nil), alarms.OfTheCluster())
 	})
 }

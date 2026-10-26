@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
 	"github.com/grandper/go-screenplay-etcd/action/put"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 	"github.com/grandper/go-screenplay-etcd/question/value"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestOfTheKey(t *testing.T) {
 	server := fixture.RunETCDServer(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 	require.NoError(t, alice.AttemptsTo(put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database")))
 
 	t.Run("answers with the value of the key", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestOfTheKey(t *testing.T) {
 	t.Run("fails when the key does not exist", func(t *testing.T) {
 		theValue, err := alice.AsksFor(value.OfTheKey("does/not/exist"))
 
-		require.ErrorIs(t, err, question.ErrKeyNotFound)
+		require.ErrorIs(t, err, etcd.ErrKeyNotFound)
 		require.EqualError(t, err, `the key "does/not/exist" was not found`)
 		assert.Empty(t, theValue)
 	})

@@ -3,7 +3,7 @@ package keys
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/question"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
@@ -25,7 +25,7 @@ type startingWithQuestion struct {
 // AnsweredBy returns the keys starting with the prefix.
 func (q *startingWithQuestion) AnsweredBy(theActor *screenplay.Actor) ([]string, error) {
 	if q.prefix == "" {
-		return nil, question.ErrPrefixNotProvided
+		return nil, etcd.ErrPrefixNotProvided
 	}
 
 	keys, err := impl.TheAbilityOf(theActor).ToRetrieveTheKeysStartingWith(theActor.Context(), q.prefix)

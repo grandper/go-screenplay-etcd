@@ -1,4 +1,4 @@
-package ability
+package etcd
 
 import impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 

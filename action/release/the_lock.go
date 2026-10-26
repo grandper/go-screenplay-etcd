@@ -3,7 +3,7 @@ package release
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -28,7 +28,7 @@ func (a *theLockAction) String() string {
 // PerformAs releases the lock.
 func (a *theLockAction) PerformAs(theActor *screenplay.Actor) error {
 	if a.name == "" {
-		return action.ErrNameNotProvided
+		return etcd.ErrNameNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToReleaseTheLock(theActor.Context(), a.name)

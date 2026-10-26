@@ -8,18 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheKeys(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	client := server.NewClient(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("removes several keys", func(t *testing.T) {
 		t.Run("in one transaction", func(t *testing.T) {
@@ -49,13 +49,13 @@ func TestTheKeys(t *testing.T) {
 		t.Run("fails when no key is provided", func(t *testing.T) {
 			err := alice.AttemptsTo(remove.TheKeys())
 
-			require.ErrorIs(t, err, action.ErrKeyNotProvided)
+			require.ErrorIs(t, err, etcd.ErrKeyNotProvided)
 		})
 
 		t.Run("fails when one of the keys is empty", func(t *testing.T) {
 			err := alice.AttemptsTo(remove.TheKeys("app/config/cache", ""))
 
-			require.ErrorIs(t, err, action.ErrKeyNotProvided)
+			require.ErrorIs(t, err, etcd.ErrKeyNotProvided)
 		})
 
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {

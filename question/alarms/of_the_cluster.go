@@ -3,7 +3,7 @@ package alarms
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 )
 
@@ -11,8 +11,8 @@ import (
 // such as NOSPACE when a member runs out of space. A healthy cluster answers
 // with no alarm:
 //
-//	err := anActor.Should(see.The(alarms.OfTheCluster()).Should(be.Empty[[]*ability.Alarm]()))
-func OfTheCluster() screenplay.Question[[]*ability.Alarm] {
+//	err := anActor.Should(see.The(alarms.OfTheCluster()).Should(be.Empty[[]*etcd.Alarm]()))
+func OfTheCluster() screenplay.Question[[]*etcd.Alarm] {
 	return &ofTheClusterQuestion{}
 }
 
@@ -20,7 +20,7 @@ func OfTheCluster() screenplay.Question[[]*ability.Alarm] {
 type ofTheClusterQuestion struct{}
 
 // AnsweredBy returns the alarms raised by the members of the cluster.
-func (q *ofTheClusterQuestion) AnsweredBy(theActor *screenplay.Actor) ([]*ability.Alarm, error) {
+func (q *ofTheClusterQuestion) AnsweredBy(theActor *screenplay.Actor) ([]*etcd.Alarm, error) {
 	return impl.TheAbilityOf(theActor).ToRetrieveTheAlarms(theActor.Context())
 }
 
@@ -30,4 +30,4 @@ func (q *ofTheClusterQuestion) String() string {
 }
 
 // ofTheClusterQuestion implements the screenplay.Question interface.
-var _ screenplay.Question[[]*ability.Alarm] = (*ofTheClusterQuestion)(nil)
+var _ screenplay.Question[[]*etcd.Alarm] = (*ofTheClusterQuestion)(nil)

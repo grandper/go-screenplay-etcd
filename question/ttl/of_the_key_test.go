@@ -10,16 +10,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
 	"github.com/grandper/go-screenplay-etcd/action/put"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 	"github.com/grandper/go-screenplay-etcd/question/ttl"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestOfTheKey(t *testing.T) {
 	server := fixture.RunETCDServer(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("answers with the time the key has left to live", func(t *testing.T) {
 		require.NoError(
@@ -49,13 +49,13 @@ func TestOfTheKey(t *testing.T) {
 	t.Run("fails when the key does not exist", func(t *testing.T) {
 		_, err := alice.AsksFor(ttl.OfTheKey("does/not/exist"))
 
-		require.ErrorIs(t, err, question.ErrKeyNotFound)
+		require.ErrorIs(t, err, etcd.ErrKeyNotFound)
 	})
 
 	t.Run("fails when the key is not provided", func(t *testing.T) {
 		_, err := alice.AsksFor(ttl.OfTheKey(""))
 
-		require.ErrorIs(t, err, question.ErrKeyNotProvided)
+		require.ErrorIs(t, err, etcd.ErrKeyNotProvided)
 	})
 
 	t.Run("fails when the actor cannot use etcd", func(t *testing.T) {

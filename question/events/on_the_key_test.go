@@ -12,14 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/action/watch"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 	"github.com/grandper/go-screenplay-etcd/question/events"
 	"github.com/grandper/go-screenplay-etcd/resolution/been"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestOnTheKey(t *testing.T) {
@@ -27,7 +27,7 @@ func TestOnTheKey(t *testing.T) {
 	production := screenplay.NewProduction(screenplay.WithTimeout(15 * time.Second))
 	alice := production.SetTheStage(screenplay.CastOfStandardActors()).
 		ActorNamed("Alice").
-		WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+		WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 	t.Cleanup(func() { require.NoError(t, alice.Exit()) })
 
 	t.Run("answers with the events recorded on the key, in order", func(t *testing.T) {
@@ -36,7 +36,7 @@ func TestOnTheKey(t *testing.T) {
 			put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database"),
 			remove.TheKey("app/config/database"),
 			wait.UntilThe(events.OnTheKey("app/config/database")).
-				HappensToHave(length.Exactly[[]*ability.Event](2)),
+				HappensToHave(length.Exactly[[]*etcd.Event](2)),
 		))
 
 		theEvents, err := alice.AsksFor(events.OnTheKey("app/config/database"))
@@ -67,7 +67,7 @@ func TestOnTheKey(t *testing.T) {
 	t.Run("fails when the key is not watched", func(t *testing.T) {
 		theEvents, err := alice.AsksFor(events.OnTheKey("app/status"))
 
-		require.ErrorIs(t, err, ability.ErrNotWatching)
+		require.ErrorIs(t, err, etcd.ErrNotWatching)
 		require.EqualError(t, err, `the key "app/status" is not watched`)
 		assert.Nil(t, theEvents)
 	})
@@ -75,7 +75,7 @@ func TestOnTheKey(t *testing.T) {
 	t.Run("fails when the key is not provided", func(t *testing.T) {
 		_, err := alice.AsksFor(events.OnTheKey(""))
 
-		require.ErrorIs(t, err, question.ErrKeyNotProvided)
+		require.ErrorIs(t, err, etcd.ErrKeyNotProvided)
 	})
 
 	t.Run("fails when the actor cannot use etcd", func(t *testing.T) {
@@ -95,7 +95,7 @@ func TestOnTheKey(t *testing.T) {
 	t.Run("implements the question interface", func(t *testing.T) {
 		assert.Implements(
 			t,
-			(*screenplay.Question[[]*ability.Event])(nil),
+			(*screenplay.Question[[]*etcd.Event])(nil),
 			events.OnTheKey("app/config/database"),
 		)
 	})

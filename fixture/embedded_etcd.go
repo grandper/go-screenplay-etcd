@@ -2,7 +2,7 @@
 // without an external cluster:
 //
 //	server := fixture.RunETCDServer(t)
-//	anActor := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+//	anActor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 package fixture
 
 import (
@@ -54,7 +54,7 @@ func RunETCDServer(t *testing.T) *ETCDServer {
 //
 //	server := fixture.RunSecureETCDServer(t)
 //	anActor := screenplay.ActorNamed("Alice").WhoCan(
-//		ability.UseETCD().
+//		use.ETCD().
 //			WithTheEndpoints(server.Endpoint()).
 //			WithTheCertificateAuthority(server.CertificateAuthority()).
 //			WithTheClientCertificate(server.ClientCertificate()).AndTheKey(server.ClientKey()),

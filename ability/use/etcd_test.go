@@ -1,4 +1,4 @@
-package ability_test
+package use_test
 
 import (
 	"context"
@@ -11,16 +11,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
 	"github.com/grandper/go-screenplay-etcd/action/put"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
-func TestUseETCD(t *testing.T) {
+func TestETCD(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 
 	t.Run("gives an actor the ability to use etcd", func(t *testing.T) {
-		alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+		alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 		require.NoError(
 			t,
@@ -33,17 +34,17 @@ func TestUseETCD(t *testing.T) {
 	})
 
 	t.Run("reports a missing endpoint when the actor first uses the ability", func(t *testing.T) {
-		alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD())
+		alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD())
 
 		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
 
-		require.ErrorIs(t, err, ability.ErrNoEndpointProvided)
+		require.ErrorIs(t, err, etcd.ErrNoEndpointProvided)
 	})
 
 	t.Run("bounds every operation with the timeout", func(t *testing.T) {
 		// Nothing listens on port 1, so the operation waits until the timeout.
 		alice := screenplay.ActorNamed("Alice").WhoCan(
-			ability.UseETCD().WithTheEndpoints("127.0.0.1:1").WithTimingOutAfter(200).Milliseconds(),
+			use.ETCD().WithTheEndpoints("127.0.0.1:1").WithTimingOutAfter(200).Milliseconds(),
 		)
 
 		started := time.Now()
@@ -56,7 +57,7 @@ func TestUseETCD(t *testing.T) {
 	t.Run("stops an operation when the context of the actor is done", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
-		alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints("127.0.0.1:1"))
+		alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("127.0.0.1:1"))
 
 		err := alice.WithContext(ctx).AttemptsTo(put.TheValue("v").ForTheKey("k"))
 
@@ -65,7 +66,7 @@ func TestUseETCD(t *testing.T) {
 
 	t.Run("prefixes every key with the namespace", func(t *testing.T) {
 		alice := screenplay.ActorNamed("Alice").WhoCan(
-			ability.UseETCD().WithTheEndpoints(server.Endpoint()).WithTheNamespace("test-run-42/"),
+			use.ETCD().WithTheEndpoints(server.Endpoint()).WithTheNamespace("test-run-42/"),
 		)
 
 		require.NoError(t, alice.AttemptsTo(put.TheValue("v1").ForTheKey("app/config/database")))
@@ -82,7 +83,7 @@ func TestUseETCD(t *testing.T) {
 
 	t.Run("uses the client it is given", func(t *testing.T) {
 		client := server.NewClient(t)
-		alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheClient(client))
+		alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheClient(client))
 
 		require.NoError(t, alice.AttemptsTo(put.TheValue("v2").ForTheKey("app/config/cache")))
 
@@ -93,7 +94,7 @@ func TestUseETCD(t *testing.T) {
 	})
 
 	t.Run("closes the connection when the actor exits", func(t *testing.T) {
-		alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+		alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 		require.NoError(t, alice.AttemptsTo(put.TheValue("v").ForTheKey("k")))
 
 		require.NoError(t, alice.Exit())
@@ -102,7 +103,7 @@ func TestUseETCD(t *testing.T) {
 	})
 
 	t.Run("exits without an error when the actor never used the ability", func(t *testing.T) {
-		alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+		alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 		require.NoError(t, alice.Exit())
 	})
@@ -110,7 +111,7 @@ func TestUseETCD(t *testing.T) {
 	t.Run("connects securely with a client certificate and its key", func(t *testing.T) {
 		secure := fixture.RunSecureETCDServer(t)
 		alice := screenplay.ActorNamed("Alice").WhoCan(
-			ability.UseETCD().
+			use.ETCD().
 				WithTheEndpoints(secure.Endpoint()).
 				WithTheCertificateAuthority(secure.CertificateAuthority()).
 				WithTheClientCertificate(secure.ClientCertificate()).AndTheKey(secure.ClientKey()).
@@ -127,7 +128,7 @@ func TestUseETCD(t *testing.T) {
 	t.Run("fails to connect securely without the client certificate the server requires", func(t *testing.T) {
 		secure := fixture.RunSecureETCDServer(t)
 		alice := screenplay.ActorNamed("Alice").WhoCan(
-			ability.UseETCD().
+			use.ETCD().
 				WithTheEndpoints(secure.Endpoint()).
 				WithTheCertificateAuthority(secure.CertificateAuthority()).
 				WithTimingOutAfter(2).Seconds(),
@@ -138,40 +139,40 @@ func TestUseETCD(t *testing.T) {
 
 	t.Run("reports a certificate that cannot be loaded when the actor first uses the ability", func(t *testing.T) {
 		alice := screenplay.ActorNamed("Alice").WhoCan(
-			ability.UseETCD().
+			use.ETCD().
 				WithTheEndpoints(server.Endpoint()).
 				WithTheClientCertificate("does/not/exist.crt").AndTheKey("does/not/exist.key"),
 		)
 
 		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
 
-		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
-		require.ErrorIs(t, err, ability.ErrFailedToConnect)
+		require.ErrorIs(t, err, etcd.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, etcd.ErrFailedToConnect)
 	})
 
 	t.Run("reports a certificate authority that cannot be loaded", func(t *testing.T) {
 		alice := screenplay.ActorNamed("Alice").WhoCan(
-			ability.UseETCD().WithTheEndpoints(server.Endpoint()).WithTheCertificateAuthority("does/not/exist.crt"),
+			use.ETCD().WithTheEndpoints(server.Endpoint()).WithTheCertificateAuthority("does/not/exist.crt"),
 		)
 
 		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
 
-		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, etcd.ErrFailedToLoadTheCertificates)
 	})
 
 	t.Run("reports a certificate authority that is not a certificate", func(t *testing.T) {
 		alice := screenplay.ActorNamed("Alice").WhoCan(
-			ability.UseETCD().WithTheEndpoints(server.Endpoint()).WithTheCertificateAuthority(server.LogFile()),
+			use.ETCD().WithTheEndpoints(server.Endpoint()).WithTheCertificateAuthority(server.LogFile()),
 		)
 
 		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
 
-		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, etcd.ErrFailedToLoadTheCertificates)
 	})
 
 	t.Run("accepts its settings in any order", func(t *testing.T) {
 		alice := screenplay.ActorNamed("Alice").WhoCan(
-			ability.UseETCD().
+			use.ETCD().
 				WithTheNamespace("ordered/").
 				WithTimingOutAfter(5).Seconds().
 				WithTheEndpoints(server.Endpoint()),

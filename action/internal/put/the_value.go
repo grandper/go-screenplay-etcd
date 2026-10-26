@@ -8,7 +8,7 @@ import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -59,7 +59,7 @@ func (a *TheValueAction) ForTheKey(key string) *TheValueAction {
 
 // IfTheKeyIsAbsent puts the value only when the key does not exist; it reads
 // "if the key is absent". When the key exists, the action fails with an error
-// wrapping action.ErrKeyAlreadyExists and the store is left untouched.
+// wrapping etcd.ErrKeyAlreadyExists and the store is left untouched.
 func (a *TheValueAction) IfTheKeyIsAbsent() *TheValueAction {
 	a.condition = ifTheKeyIsAbsent
 
@@ -70,7 +70,7 @@ func (a *TheValueAction) IfTheKeyIsAbsent() *TheValueAction {
 // modified since the revision, the one revision.OfTheKey answered
 // with; it reads "if the key is unchanged since the revision 42". The revision
 // zero means that the key must not exist. When the key was modified, the
-// action fails with an error wrapping action.ErrKeyModified and the store is
+// action fails with an error wrapping etcd.ErrKeyModified and the store is
 // left untouched.
 func (a *TheValueAction) IfTheKeyIsUnchangedSinceTheRevision(revision int64) *TheValueAction {
 	a.condition = ifTheKeyIsUnchanged
@@ -148,7 +148,7 @@ func (a *TheValueAction) describeTheValue() string {
 // PerformAs puts the value for the key.
 func (a *TheValueAction) PerformAs(theActor *screenplay.Actor) error {
 	if a.key == "" {
-		return action.ErrKeyNotProvided
+		return etcd.ErrKeyNotProvided
 	}
 
 	theAbility := impl.TheAbilityOf(theActor)
@@ -191,7 +191,7 @@ func (a *TheValueAction) put(theActor *screenplay.Actor, theAbility *impl.Operat
 			return err
 		}
 		if !succeeded {
-			return fmt.Errorf("the key %s %w", verdict.Describe(a.key), action.ErrKeyAlreadyExists)
+			return fmt.Errorf("the key %s %w", verdict.Describe(a.key), etcd.ErrKeyAlreadyExists)
 		}
 
 		return nil
@@ -204,7 +204,7 @@ func (a *TheValueAction) put(theActor *screenplay.Actor, theAbility *impl.Operat
 			return fmt.Errorf(
 				"the key %s %w since the revision %d",
 				verdict.Describe(a.key),
-				action.ErrKeyModified,
+				etcd.ErrKeyModified,
 				a.revision,
 			)
 		}

@@ -6,7 +6,7 @@ import (
 	"github.com/grandper/go-screenplay/v2/resolution"
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 )
 
 // InETCD creates a resolution to tell if a key exists in etcd, for the key
@@ -15,10 +15,10 @@ import (
 //	see.The(key.Named("app/status")).Should(exist.InETCD())
 //
 // A nil key does not exist.
-func InETCD() screenplay.Resolution[*ability.Key] {
+func InETCD() screenplay.Resolution[*etcd.Key] {
 	return resolution.FromFunc(
 		"exist in etcd",
-		func(key *ability.Key) error {
+		func(key *etcd.Key) error {
 			if key == nil || !key.Exists() {
 				return errors.New("it does not exist")
 			}

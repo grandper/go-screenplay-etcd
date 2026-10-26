@@ -11,18 +11,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheKey(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	client := server.NewClient(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("removes a key", func(t *testing.T) {
 		t.Run("successfully", func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestTheKey(t *testing.T) {
 			require.NoError(t, alice.AttemptsTo(put.TheValue("2").ForTheKey("app/config/counter")))
 
 			err = alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(theRevision))
-			require.ErrorIs(t, err, action.ErrKeyModified)
+			require.ErrorIs(t, err, etcd.ErrKeyModified)
 			require.EqualError(t, err,
 				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, theRevision),
 			)
@@ -71,7 +71,7 @@ func TestTheKey(t *testing.T) {
 		t.Run("fails when the key is not provided", func(t *testing.T) {
 			err := alice.AttemptsTo(remove.TheKey(""))
 
-			require.ErrorIs(t, err, action.ErrKeyNotProvided)
+			require.ErrorIs(t, err, etcd.ErrKeyNotProvided)
 			require.EqualError(t, err, "the key must be provided")
 		})
 

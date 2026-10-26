@@ -13,18 +13,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheValue(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	client := server.NewClient(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("puts a value", func(t *testing.T) {
 		t.Run("for a key", func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestTheValue(t *testing.T) {
 			assert.Equal(t, "initial", etcdfixture.ValueOf(t, client, "app/config/flag"))
 
 			err := alice.AttemptsTo(put.TheValue("other").ForTheKey("app/config/flag").IfTheKeyIsAbsent())
-			require.ErrorIs(t, err, action.ErrKeyAlreadyExists)
+			require.ErrorIs(t, err, etcd.ErrKeyAlreadyExists)
 			require.EqualError(t, err, `the key "app/config/flag" already exists`)
 			assert.Equal(t, "initial", etcdfixture.ValueOf(t, client, "app/config/flag"))
 		})
@@ -79,7 +79,7 @@ func TestTheValue(t *testing.T) {
 			err = alice.AttemptsTo(
 				put.TheValue("3").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(theRevision),
 			)
-			require.ErrorIs(t, err, action.ErrKeyModified)
+			require.ErrorIs(t, err, etcd.ErrKeyModified)
 			require.EqualError(t, err,
 				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, theRevision),
 			)
@@ -98,7 +98,7 @@ func TestTheValue(t *testing.T) {
 				alice.AttemptsTo(
 					put.TheValue("other").ForTheKey("app/config/flag").IfTheKeyIsUnchangedSinceTheRevision(0),
 				),
-				action.ErrKeyModified,
+				etcd.ErrKeyModified,
 			)
 		})
 
@@ -121,7 +121,7 @@ func TestTheValue(t *testing.T) {
 		})
 
 		t.Run("expiring after a duration unless kept alive", func(t *testing.T) {
-			carol := screenplay.ActorNamed("Carol").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+			carol := screenplay.ActorNamed("Carol").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 			require.NoError(t, carol.AttemptsTo(
 				put.TheValue("held").ForTheKey("locks/nightly-job").ExpiringAfter(1).Second().AndKeepItAlive(),
@@ -153,16 +153,16 @@ func TestTheValue(t *testing.T) {
 				alice.AttemptsTo(
 					put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(10).Seconds().IfTheKeyIsAbsent(),
 				),
-				action.ErrKeyAlreadyExists,
+				etcd.ErrKeyAlreadyExists,
 			)
 		})
 
 		t.Run("fails when the key is not provided", func(t *testing.T) {
 			err := alice.AttemptsTo(put.TheValue("v"))
-			require.ErrorIs(t, err, action.ErrKeyNotProvided)
+			require.ErrorIs(t, err, etcd.ErrKeyNotProvided)
 			require.EqualError(t, err, "the key must be provided")
 
-			require.ErrorIs(t, alice.AttemptsTo(put.TheValue("v").ForTheKey("")), action.ErrKeyNotProvided)
+			require.ErrorIs(t, alice.AttemptsTo(put.TheValue("v").ForTheKey("")), etcd.ErrKeyNotProvided)
 		})
 
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {

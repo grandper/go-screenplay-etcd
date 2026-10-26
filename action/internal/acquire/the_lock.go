@@ -3,7 +3,7 @@ package acquire
 import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -44,7 +44,7 @@ func (a *TheLockAction) String() string {
 // PerformAs acquires the lock.
 func (a *TheLockAction) PerformAs(theActor *screenplay.Actor) error {
 	if a.name == "" {
-		return action.ErrNameNotProvided
+		return etcd.ErrNameNotProvided
 	}
 
 	return impl.TheAbilityOf(theActor).ToAcquireTheLock(theActor.Context(), a.name, a.withoutWaiting)

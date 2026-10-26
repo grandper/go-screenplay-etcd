@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
 	"github.com/grandper/go-screenplay-etcd/action/put"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
-	"github.com/grandper/go-screenplay-etcd/question"
 	"github.com/grandper/go-screenplay-etcd/question/values"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestOfTheKeysStartingWith(t *testing.T) {
 	server := fixture.RunETCDServer(t)
-	alice := screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 	require.NoError(t, alice.AttemptsTo(
 		put.TheValue("redis://localhost:6379").ForTheKey("app/config/cache"),
 		put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database"),
@@ -58,7 +58,7 @@ func TestOfTheKeysStartingWith(t *testing.T) {
 	t.Run("fails when the prefix is not provided", func(t *testing.T) {
 		theValues, err := alice.AsksFor(values.OfTheKeysStartingWith(""))
 
-		require.ErrorIs(t, err, question.ErrPrefixNotProvided)
+		require.ErrorIs(t, err, etcd.ErrPrefixNotProvided)
 		assert.Nil(t, theValues)
 	})
 

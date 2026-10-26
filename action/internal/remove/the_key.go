@@ -5,7 +5,7 @@ import (
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
-	"github.com/grandper/go-screenplay-etcd/action"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
@@ -28,7 +28,7 @@ type TheKeyAction struct {
 // IfUnchangedSinceTheRevision removes the key only when it was not modified
 // since the revision, the one revision.OfTheKey answered with; it
 // reads "if unchanged since the revision 42". When the key was modified, the
-// action fails with an error wrapping action.ErrKeyModified and the store is
+// action fails with an error wrapping etcd.ErrKeyModified and the store is
 // left untouched.
 func (a *TheKeyAction) IfUnchangedSinceTheRevision(revision int64) *TheKeyAction {
 	a.conditional = true
@@ -50,7 +50,7 @@ func (a *TheKeyAction) String() string {
 // PerformAs removes the key.
 func (a *TheKeyAction) PerformAs(theActor *screenplay.Actor) error {
 	if a.key == "" {
-		return action.ErrKeyNotProvided
+		return etcd.ErrKeyNotProvided
 	}
 
 	theAbility := impl.TheAbilityOf(theActor)
@@ -67,7 +67,7 @@ func (a *TheKeyAction) PerformAs(theActor *screenplay.Actor) error {
 		return fmt.Errorf(
 			"the key %s %w since the revision %d",
 			verdict.Describe(a.key),
-			action.ErrKeyModified,
+			etcd.ErrKeyModified,
 			a.revision,
 		)
 	}

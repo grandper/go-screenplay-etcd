@@ -8,19 +8,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/ability"
-	"github.com/grandper/go-screenplay-etcd/action"
 	"github.com/grandper/go-screenplay-etcd/action/acquire"
 	"github.com/grandper/go-screenplay-etcd/action/release"
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheLock(t *testing.T) {
 	server := fixture.RunETCDServer(t)
 	newActor := func(t *testing.T, name string) *screenplay.Actor {
 		t.Helper()
-		actor := screenplay.ActorNamed(name).WhoCan(ability.UseETCD().WithTheEndpoints(server.Endpoint()))
+		actor := screenplay.ActorNamed(name).WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 		t.Cleanup(func() { require.NoError(t, actor.Exit()) })
 
 		return actor
@@ -51,14 +51,14 @@ func TestTheLock(t *testing.T) {
 
 			err := alice.AttemptsTo(release.TheLock("deployment"))
 
-			require.ErrorIs(t, err, ability.ErrLockNotHeld)
+			require.ErrorIs(t, err, etcd.ErrLockNotHeld)
 			require.EqualError(t, err, `the lock "deployment" is not held by the actor`)
 		})
 
 		t.Run("fails when the name is not provided", func(t *testing.T) {
 			alice := newActor(t, "Alice")
 
-			require.ErrorIs(t, alice.AttemptsTo(release.TheLock("")), action.ErrNameNotProvided)
+			require.ErrorIs(t, alice.AttemptsTo(release.TheLock("")), etcd.ErrNameNotProvided)
 		})
 
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {
