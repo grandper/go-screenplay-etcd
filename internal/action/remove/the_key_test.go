@@ -8,13 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/action/internal/remove"
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/internal/action/remove"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 	"github.com/grandper/go-screenplay-etcd/question/revision"
-	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheKey(t *testing.T) {
@@ -27,7 +26,7 @@ func TestTheKey(t *testing.T) {
 
 		require.NoError(t, alice.AttemptsTo(remove.TheKey("app/config/cache")))
 
-		etcdfixture.AssertKeyDoesNotExist(t, client, "app/config/cache")
+		fixture.AssertKeyDoesNotExist(t, client, "app/config/cache")
 	})
 
 	t.Run("removes a key that does not exist without an error", func(t *testing.T) {
@@ -48,7 +47,7 @@ func TestTheKey(t *testing.T) {
 			err,
 			fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, theRevision),
 		)
-		assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"), "the store is left untouched")
+		assert.Equal(t, "2", fixture.ValueOf(t, client, "app/config/counter"), "the store is left untouched")
 
 		theRevision, err = alice.AsksFor(revision.OfTheKey("app/config/counter"))
 		require.NoError(t, err)
@@ -56,7 +55,7 @@ func TestTheKey(t *testing.T) {
 			t,
 			alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(theRevision)),
 		)
-		etcdfixture.AssertKeyDoesNotExist(t, client, "app/config/counter")
+		fixture.AssertKeyDoesNotExist(t, client, "app/config/counter")
 	})
 
 	t.Run("reports a missing key before reaching the store", func(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"github.com/grandper/go-screenplay/v2/resolution/fixture"
 	"github.com/stretchr/testify/assert"
 
-	etcdfixture "github.com/grandper/go-screenplay-etcd/question/fixture"
+	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
 	"github.com/grandper/go-screenplay-etcd/resolution/exist"
 )
 

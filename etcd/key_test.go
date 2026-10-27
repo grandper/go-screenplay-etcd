@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
-	"github.com/grandper/go-screenplay-etcd/fixture"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 	"github.com/grandper/go-screenplay-etcd/question/key"
-	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestKey(t *testing.T) {

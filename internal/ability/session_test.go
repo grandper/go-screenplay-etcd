@@ -9,8 +9,8 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestSession(t *testing.T) {

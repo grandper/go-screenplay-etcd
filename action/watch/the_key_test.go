@@ -13,13 +13,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/action/watch"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestTheKey(t *testing.T) {
@@ -147,7 +146,7 @@ func TestTheKey(t *testing.T) {
 
 	t.Run("is narrated", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 		t.Cleanup(func() { require.NoError(t, adam.Exit()) })
 
 		require.NoError(t, adam.AttemptsTo(watch.TheKey("app/config/database")))

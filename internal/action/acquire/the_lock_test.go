@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/grandper/go-screenplay-etcd/action/internal/acquire"
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/action/acquire"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestTheLock(t *testing.T) {

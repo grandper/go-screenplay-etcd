@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 )
 
 // NarratedActor creates an actor whose narration is recorded by the recorder,

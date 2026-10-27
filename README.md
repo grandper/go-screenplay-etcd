@@ -19,7 +19,7 @@ err = actor.Should(see.The(value.OfTheKey("app/status")).Should(be.EqualTo("read
 ```sh
 go get github.com/grandper/go-screenplay-etcd
 ```
-It requires go-screenplay v2, and drives etcd v3 through its official client, `go.etcd.io/etcd/client/v3`.
+It requires Go 1.27 or later and go-screenplay v2, and drives etcd v3 through its official client, `go.etcd.io/etcd/client/v3`.
 
 ## Ability
 This extension provides one ability, `use.ETCD()`, which allows an actor to interact with an etcd cluster; given to an actor with `WhoCan`, it reads "who can use etcd". The ability is given the endpoints of the cluster with `WithTheEndpoints("localhost:2379")`, reading "use etcd with the endpoints localhost:2379", or a client of your own with `WithTheClient(client)`, reading "use etcd with the client".
@@ -34,7 +34,7 @@ import (
     "github.com/grandper/go-screenplay/v2/question/last"
     "github.com/grandper/go-screenplay/v2/question/number"
     "github.com/grandper/go-screenplay/v2/resolution/be"
-    "github.com/grandper/go-screenplay-etcd/etcd"
+    "github.com/grandper/go-screenplay-etcd/ability/use"
     "github.com/grandper/go-screenplay-etcd/action/acquire"
     "github.com/grandper/go-screenplay-etcd/action/campaign"
     "github.com/grandper/go-screenplay-etcd/action/put"
@@ -42,7 +42,7 @@ import (
     "github.com/grandper/go-screenplay-etcd/action/remove"
     "github.com/grandper/go-screenplay-etcd/action/resign"
     "github.com/grandper/go-screenplay-etcd/action/watch"
-    "github.com/grandper/go-screenplay-etcd/fixture"
+    "github.com/grandper/go-screenplay-etcd/etcd"
     "github.com/grandper/go-screenplay-etcd/question/alarms"
     "github.com/grandper/go-screenplay-etcd/question/events"
     "github.com/grandper/go-screenplay-etcd/question/key"
@@ -55,7 +55,6 @@ import (
     "github.com/grandper/go-screenplay-etcd/question/values"
     "github.com/grandper/go-screenplay-etcd/resolution/been"
     "github.com/grandper/go-screenplay-etcd/resolution/exist"
-    "github.com/grandper/go-screenplay-etcd/use"
 )
 ```
 Then create an actor who can use etcd, with the endpoints of the cluster in the form `host:port`:
@@ -489,3 +488,6 @@ func TestNoticesAConfigurationChange(t *testing.T) {
 ## References
 - [etcd documentation](https://etcd.io/docs/)
 - [etcd Go client](https://github.com/etcd-io/etcd/tree/main/client/v3)
+
+## License
+Licensed under MIT License.

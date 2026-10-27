@@ -8,11 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestTheValues(t *testing.T) {
@@ -26,13 +25,13 @@ func TestTheValues(t *testing.T) {
 
 	t.Run("puts several values", func(t *testing.T) {
 		t.Run("in one transaction", func(t *testing.T) {
-			revision := etcdfixture.RevisionOf(t, client)
+			revision := fixture.RevisionOf(t, client)
 
 			require.NoError(t, alice.AttemptsTo(put.TheValues(config)))
 
-			assert.Equal(t, "postgresql://localhost:5432", etcdfixture.ValueOf(t, client, "app/config/database"))
-			assert.Equal(t, "redis://localhost:6379", etcdfixture.ValueOf(t, client, "app/config/cache"))
-			assert.Equal(t, revision+1, etcdfixture.RevisionOf(t, client), "both values are put in one revision")
+			assert.Equal(t, "postgresql://localhost:5432", fixture.ValueOf(t, client, "app/config/database"))
+			assert.Equal(t, "redis://localhost:6379", fixture.ValueOf(t, client, "app/config/cache"))
+			assert.Equal(t, revision+1, fixture.RevisionOf(t, client), "both values are put in one revision")
 		})
 
 		t.Run("fails when no value is provided", func(t *testing.T) {
@@ -55,7 +54,7 @@ func TestTheValues(t *testing.T) {
 
 	t.Run("is narrated with its values sorted by key", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 
 		require.NoError(t, adam.AttemptsTo(put.TheValues(config)))
 
@@ -68,7 +67,7 @@ func TestTheValues(t *testing.T) {
 
 	t.Run("can be kept secret", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 
 		require.NoError(t, adam.AttemptsTo(put.TheValues(config).Secretly()))
 

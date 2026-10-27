@@ -9,14 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/action/internal/put"
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
+	"github.com/grandper/go-screenplay-etcd/internal/action/put"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 	"github.com/grandper/go-screenplay-etcd/question/key"
 	"github.com/grandper/go-screenplay-etcd/question/revision"
-	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestTheValue(t *testing.T) {
@@ -45,7 +44,7 @@ func TestTheValue(t *testing.T) {
 
 		require.ErrorIs(t, err, etcd.ErrKeyAlreadyExists)
 		require.EqualError(t, err, `the key "app/config/flag" already exists`)
-		assert.Equal(t, "initial", etcdfixture.ValueOf(t, client, "app/config/flag"), "the store is left untouched")
+		assert.Equal(t, "initial", fixture.ValueOf(t, client, "app/config/flag"), "the store is left untouched")
 	})
 
 	t.Run("puts the value only if the key is unchanged since the revision", func(t *testing.T) {
@@ -66,7 +65,7 @@ func TestTheValue(t *testing.T) {
 			err,
 			fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, theRevision),
 		)
-		assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"), "the store is left untouched")
+		assert.Equal(t, "2", fixture.ValueOf(t, client, "app/config/counter"), "the store is left untouched")
 	})
 
 	t.Run("treats the revision zero as the key being absent", func(t *testing.T) {
@@ -106,7 +105,7 @@ func TestTheValue(t *testing.T) {
 		))
 
 		time.Sleep(4 * time.Second)
-		assert.Equal(t, "held", etcdfixture.ValueOf(t, client, "locks/nightly-job"), "the lease is renewed")
+		assert.Equal(t, "held", fixture.ValueOf(t, client, "locks/nightly-job"), "the lease is renewed")
 		require.NoError(t, carol.Exit())
 		assert.Eventually(t, func() bool {
 			response, err := client.Get(t.Context(), "locks/nightly-job")
@@ -126,7 +125,7 @@ func TestTheValue(t *testing.T) {
 	t.Run("hides a secret value from the narration only", func(t *testing.T) {
 		require.NoError(t, alice.AttemptsTo(put.TheValue("s3cret").ForTheKey("app/config/password").Secretly()))
 
-		assert.Equal(t, "s3cret", etcdfixture.ValueOf(t, client, "app/config/password"))
+		assert.Equal(t, "s3cret", fixture.ValueOf(t, client, "app/config/password"))
 		assert.Equal(
 			t,
 			`put the value <secret> for the key "app/config/password"`,

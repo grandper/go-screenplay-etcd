@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/grandper/go-screenplay-etcd/fixture"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestRunETCDServer(t *testing.T) {

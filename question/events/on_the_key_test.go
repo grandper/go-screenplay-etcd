@@ -12,14 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/action/watch"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 	"github.com/grandper/go-screenplay-etcd/question/events"
 	"github.com/grandper/go-screenplay-etcd/resolution/been"
-	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestOnTheKey(t *testing.T) {

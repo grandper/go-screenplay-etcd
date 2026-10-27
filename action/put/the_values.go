@@ -1,6 +1,6 @@
 package put
 
-import impl "github.com/grandper/go-screenplay-etcd/action/internal/put"
+import impl "github.com/grandper/go-screenplay-etcd/internal/action/put"
 
 // TheValues puts several values in the store, each for its key, in one
 // transaction, so that the store never holds some of them without the others:

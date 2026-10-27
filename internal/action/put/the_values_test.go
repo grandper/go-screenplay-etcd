@@ -8,11 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/grandper/go-screenplay-etcd/action/internal/put"
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/action/put"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestTheValues(t *testing.T) {
@@ -26,8 +25,8 @@ func TestTheValues(t *testing.T) {
 			"app/config/cache":    "redis://localhost:6379",
 		})))
 
-		assert.Equal(t, "postgresql://localhost:5432", etcdfixture.ValueOf(t, client, "app/config/database"))
-		assert.Equal(t, "redis://localhost:6379", etcdfixture.ValueOf(t, client, "app/config/cache"))
+		assert.Equal(t, "postgresql://localhost:5432", fixture.ValueOf(t, client, "app/config/database"))
+		assert.Equal(t, "redis://localhost:6379", fixture.ValueOf(t, client, "app/config/cache"))
 		response, err := client.Get(t.Context(), "app/config/", clientv3.WithPrefix())
 		require.NoError(t, err)
 		require.Len(t, response.Kvs, 2)
@@ -37,7 +36,7 @@ func TestTheValues(t *testing.T) {
 	t.Run("puts one value", func(t *testing.T) {
 		require.NoError(t, alice.AttemptsTo(put.TheValues(map[string]string{"app/status": "ready"})))
 
-		assert.Equal(t, "ready", etcdfixture.ValueOf(t, client, "app/status"))
+		assert.Equal(t, "ready", fixture.ValueOf(t, client, "app/status"))
 	})
 
 	t.Run("reports missing values before reaching the store", func(t *testing.T) {

@@ -1,6 +1,6 @@
 package put
 
-import impl "github.com/grandper/go-screenplay-etcd/action/internal/put"
+import impl "github.com/grandper/go-screenplay-etcd/internal/action/put"
 
 // TheValue puts a value in the store. The key is given with ForTheKey, so the
 // statement reads as a sentence:

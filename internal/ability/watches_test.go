@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestWatches(t *testing.T) {

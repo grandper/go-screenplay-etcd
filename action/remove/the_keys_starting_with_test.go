@@ -8,12 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestTheKeysStartingWith(t *testing.T) {
@@ -31,9 +30,9 @@ func TestTheKeysStartingWith(t *testing.T) {
 
 			require.NoError(t, alice.AttemptsTo(remove.TheKeysStartingWith("app/config/")))
 
-			etcdfixture.AssertKeyDoesNotExist(t, client, "app/config/cache")
-			etcdfixture.AssertKeyDoesNotExist(t, client, "app/config/database")
-			assert.Equal(t, "ready", etcdfixture.ValueOf(t, client, "app/status"))
+			fixture.AssertKeyDoesNotExist(t, client, "app/config/cache")
+			fixture.AssertKeyDoesNotExist(t, client, "app/config/database")
+			assert.Equal(t, "ready", fixture.ValueOf(t, client, "app/status"))
 		})
 
 		t.Run("when no key starts with the prefix, without an error", func(t *testing.T) {
@@ -56,7 +55,7 @@ func TestTheKeysStartingWith(t *testing.T) {
 
 	t.Run("is narrated", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 
 		require.NoError(t, adam.AttemptsTo(remove.TheKeysStartingWith("app/config/")))
 

@@ -10,12 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/acquire"
 	"github.com/grandper/go-screenplay-etcd/action/release"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestTheLock(t *testing.T) {
@@ -112,7 +111,7 @@ func TestTheLock(t *testing.T) {
 
 	t.Run("is narrated", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 		t.Cleanup(func() { require.NoError(t, adam.Exit()) })
 
 		require.NoError(t, adam.AttemptsTo(acquire.TheLock("deployment")))

@@ -7,12 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 	"github.com/grandper/go-screenplay-etcd/question/alarms"
-	questionfixture "github.com/grandper/go-screenplay-etcd/question/fixture"
 	"github.com/grandper/go-screenplay-etcd/question/status"
-	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestEndpointStatus(t *testing.T) {
@@ -37,7 +36,7 @@ func TestAlarm(t *testing.T) {
 	t.Run("exposes the parts of an alarm a member raised", func(t *testing.T) {
 		t.Parallel()
 
-		alarm := questionfixture.CreateFakeAlarm(42, "NOSPACE")
+		alarm := fixture.CreateFakeAlarm(42, "NOSPACE")
 
 		assert.Equal(t, uint64(42), alarm.MemberID())
 		assert.Equal(t, "NOSPACE", alarm.Type())

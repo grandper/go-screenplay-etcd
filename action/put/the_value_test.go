@@ -13,12 +13,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestTheValue(t *testing.T) {
@@ -33,7 +32,7 @@ func TestTheValue(t *testing.T) {
 				alice.AttemptsTo(put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database")),
 			)
 
-			assert.Equal(t, "postgresql://localhost:5432", etcdfixture.ValueOf(t, client, "app/config/database"))
+			assert.Equal(t, "postgresql://localhost:5432", fixture.ValueOf(t, client, "app/config/database"))
 		})
 
 		t.Run("overwriting the value the key already holds", func(t *testing.T) {
@@ -42,13 +41,13 @@ func TestTheValue(t *testing.T) {
 				put.TheValue("2").ForTheKey("app/config/retries"),
 			))
 
-			assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/retries"))
+			assert.Equal(t, "2", fixture.ValueOf(t, client, "app/config/retries"))
 		})
 
 		t.Run("that is empty", func(t *testing.T) {
 			require.NoError(t, alice.AttemptsTo(put.TheValue("").ForTheKey("app/config/empty")))
 
-			assert.Empty(t, etcdfixture.ValueOf(t, client, "app/config/empty"))
+			assert.Empty(t, fixture.ValueOf(t, client, "app/config/empty"))
 		})
 
 		t.Run("only if the key is absent", func(t *testing.T) {
@@ -58,12 +57,12 @@ func TestTheValue(t *testing.T) {
 				t,
 				alice.AttemptsTo(put.TheValue("initial").ForTheKey("app/config/flag").IfTheKeyIsAbsent()),
 			)
-			assert.Equal(t, "initial", etcdfixture.ValueOf(t, client, "app/config/flag"))
+			assert.Equal(t, "initial", fixture.ValueOf(t, client, "app/config/flag"))
 
 			err := alice.AttemptsTo(put.TheValue("other").ForTheKey("app/config/flag").IfTheKeyIsAbsent())
 			require.ErrorIs(t, err, etcd.ErrKeyAlreadyExists)
 			require.EqualError(t, err, `the key "app/config/flag" already exists`)
-			assert.Equal(t, "initial", etcdfixture.ValueOf(t, client, "app/config/flag"))
+			assert.Equal(t, "initial", fixture.ValueOf(t, client, "app/config/flag"))
 		})
 
 		t.Run("only if the key is unchanged since a revision", func(t *testing.T) {
@@ -74,7 +73,7 @@ func TestTheValue(t *testing.T) {
 			require.NoError(t, alice.AttemptsTo(
 				put.TheValue("2").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(theRevision),
 			))
-			assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"))
+			assert.Equal(t, "2", fixture.ValueOf(t, client, "app/config/counter"))
 
 			err = alice.AttemptsTo(
 				put.TheValue("3").ForTheKey("app/config/counter").IfTheKeyIsUnchangedSinceTheRevision(theRevision),
@@ -83,7 +82,7 @@ func TestTheValue(t *testing.T) {
 			require.EqualError(t, err,
 				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, theRevision),
 			)
-			assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"))
+			assert.Equal(t, "2", fixture.ValueOf(t, client, "app/config/counter"))
 		})
 
 		t.Run("only if the key is unchanged since the revision zero, which means absent", func(t *testing.T) {
@@ -128,7 +127,7 @@ func TestTheValue(t *testing.T) {
 			))
 
 			time.Sleep(4 * time.Second)
-			assert.Equal(t, "held", etcdfixture.ValueOf(t, client, "locks/nightly-job"), "the lease is kept alive")
+			assert.Equal(t, "held", fixture.ValueOf(t, client, "locks/nightly-job"), "the lease is kept alive")
 
 			require.NoError(t, carol.Exit())
 			assert.Eventually(t, func() bool {
@@ -174,7 +173,7 @@ func TestTheValue(t *testing.T) {
 
 	t.Run("is narrated", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 
 		require.NoError(t, adam.AttemptsTo(put.TheValue("redis://localhost:6379").ForTheKey("app/config/cache")))
 
@@ -186,7 +185,7 @@ func TestTheValue(t *testing.T) {
 
 	t.Run("is narrated with its expiry", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 
 		require.NoError(t, adam.AttemptsTo(
 			put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(30).Seconds().AndKeepItAlive(),
@@ -202,7 +201,7 @@ func TestTheValue(t *testing.T) {
 
 	t.Run("can be kept secret", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 
 		require.NoError(t, adam.AttemptsTo(put.TheValue("s3cret").ForTheKey("app/config/password").Secretly()))
 
@@ -211,7 +210,7 @@ func TestTheValue(t *testing.T) {
 			`Adam attempts to put the value <secret> for the key "app/config/password"`,
 			recorder.Messages()[0],
 		)
-		assert.Equal(t, "s3cret", etcdfixture.ValueOf(t, client, "app/config/password"))
+		assert.Equal(t, "s3cret", fixture.ValueOf(t, client, "app/config/password"))
 	})
 
 	t.Run("implements the stringer interface", func(t *testing.T) {

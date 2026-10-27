@@ -1,6 +1,6 @@
 package campaign
 
-import impl "github.com/grandper/go-screenplay-etcd/action/internal/campaign"
+import impl "github.com/grandper/go-screenplay-etcd/internal/action/campaign"
 
 // InTheElection campaigns in an election, waiting for the leader to resign if
 // there is one, and returns once the actor leads it. The leadership is held

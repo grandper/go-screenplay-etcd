@@ -1,6 +1,6 @@
 package remove
 
-import impl "github.com/grandper/go-screenplay-etcd/action/internal/remove"
+import impl "github.com/grandper/go-screenplay-etcd/internal/action/remove"
 
 // TheKey removes a key from the store. Removing a key that does not exist is
 // not an error:

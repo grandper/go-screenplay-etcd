@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grandper/go-screenplay-etcd/action/internal/campaign"
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
+	"github.com/grandper/go-screenplay-etcd/internal/action/campaign"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 	"github.com/grandper/go-screenplay-etcd/question/leader"
-	"github.com/grandper/go-screenplay-etcd/use"
 )
 
 func TestInTheElection(t *testing.T) {

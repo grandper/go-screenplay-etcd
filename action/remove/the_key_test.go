@@ -11,12 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestTheKey(t *testing.T) {
@@ -30,7 +29,7 @@ func TestTheKey(t *testing.T) {
 
 			require.NoError(t, alice.AttemptsTo(remove.TheKey("app/config/cache")))
 
-			etcdfixture.AssertKeyDoesNotExist(t, client, "app/config/cache")
+			fixture.AssertKeyDoesNotExist(t, client, "app/config/cache")
 		})
 
 		t.Run("leaving the other keys in place", func(t *testing.T) {
@@ -41,7 +40,7 @@ func TestTheKey(t *testing.T) {
 
 			require.NoError(t, alice.AttemptsTo(remove.TheKey("app/config/cache")))
 
-			assert.Equal(t, "postgresql://localhost:5432", etcdfixture.ValueOf(t, client, "app/config/database"))
+			assert.Equal(t, "postgresql://localhost:5432", fixture.ValueOf(t, client, "app/config/database"))
 		})
 
 		t.Run("that does not exist, without an error", func(t *testing.T) {
@@ -59,13 +58,13 @@ func TestTheKey(t *testing.T) {
 			require.EqualError(t, err,
 				fmt.Sprintf(`the key "app/config/counter" was modified since the revision %d`, theRevision),
 			)
-			assert.Equal(t, "2", etcdfixture.ValueOf(t, client, "app/config/counter"))
+			assert.Equal(t, "2", fixture.ValueOf(t, client, "app/config/counter"))
 
 			require.NoError(
 				t,
 				alice.AttemptsTo(remove.TheKey("app/config/counter").IfUnchangedSinceTheRevision(theRevision+1)),
 			)
-			etcdfixture.AssertKeyDoesNotExist(t, client, "app/config/counter")
+			fixture.AssertKeyDoesNotExist(t, client, "app/config/counter")
 		})
 
 		t.Run("fails when the key is not provided", func(t *testing.T) {
@@ -84,7 +83,7 @@ func TestTheKey(t *testing.T) {
 
 	t.Run("is narrated", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 
 		require.NoError(t, adam.AttemptsTo(remove.TheKey("app/config/cache")))
 

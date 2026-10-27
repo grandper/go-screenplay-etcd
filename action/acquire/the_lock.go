@@ -1,6 +1,6 @@
 package acquire
 
-import impl "github.com/grandper/go-screenplay-etcd/action/internal/acquire"
+import impl "github.com/grandper/go-screenplay-etcd/internal/action/acquire"
 
 // TheLock acquires a distributed lock, waiting for the actor holding it to
 // release it. The lock is held until the actor releases it with

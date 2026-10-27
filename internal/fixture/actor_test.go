@@ -8,11 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
 	"github.com/grandper/go-screenplay-etcd/action/remove"
-	"github.com/grandper/go-screenplay-etcd/fixture"
-	etcdfixture "github.com/grandper/go-screenplay-etcd/internal/fixture"
-	"github.com/grandper/go-screenplay-etcd/use"
+	"github.com/grandper/go-screenplay-etcd/internal/fixture"
 )
 
 func TestNarratedActor(t *testing.T) {
@@ -21,7 +20,7 @@ func TestNarratedActor(t *testing.T) {
 
 	t.Run("creates an actor whose narration is recorded", func(t *testing.T) {
 		recorder := screenplayfixture.NewRecorder()
-		adam := etcdfixture.NarratedActor("Adam", recorder, server.Endpoint())
+		adam := fixture.NarratedActor("Adam", recorder, server.Endpoint())
 		t.Cleanup(func() { require.NoError(t, adam.Exit()) })
 
 		require.NoError(t, adam.AttemptsTo(put.TheValue("ready").ForTheKey("app/status")))
@@ -32,12 +31,12 @@ func TestNarratedActor(t *testing.T) {
 	})
 
 	t.Run("creates an actor who can use the etcd server at the endpoint", func(t *testing.T) {
-		adam := etcdfixture.NarratedActor("Adam", screenplayfixture.NewRecorder(), server.Endpoint())
+		adam := fixture.NarratedActor("Adam", screenplayfixture.NewRecorder(), server.Endpoint())
 		t.Cleanup(func() { require.NoError(t, adam.Exit()) })
 
 		require.NoError(t, adam.AttemptsTo(put.TheValue("redis://localhost:6379").ForTheKey("app/config/cache")))
 
-		assert.Equal(t, "redis://localhost:6379", etcdfixture.ValueOf(t, client, "app/config/cache"))
+		assert.Equal(t, "redis://localhost:6379", fixture.ValueOf(t, client, "app/config/cache"))
 	})
 }
 
@@ -52,13 +51,13 @@ func TestValueOf(t *testing.T) {
 			alice.AttemptsTo(put.TheValue("postgresql://localhost:5432").ForTheKey("app/config/database")),
 		)
 
-		assert.Equal(t, "postgresql://localhost:5432", etcdfixture.ValueOf(t, client, "app/config/database"))
+		assert.Equal(t, "postgresql://localhost:5432", fixture.ValueOf(t, client, "app/config/database"))
 	})
 
 	t.Run("returns an empty value when that is what the key holds", func(t *testing.T) {
 		require.NoError(t, alice.AttemptsTo(put.TheValue("").ForTheKey("app/config/empty")))
 
-		assert.Empty(t, etcdfixture.ValueOf(t, client, "app/config/empty"))
+		assert.Empty(t, fixture.ValueOf(t, client, "app/config/empty"))
 	})
 }
 
@@ -68,7 +67,7 @@ func TestAssertKeyDoesNotExist(t *testing.T) {
 	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("passes for a key that was never put", func(t *testing.T) {
-		etcdfixture.AssertKeyDoesNotExist(t, client, "does/not/exist")
+		fixture.AssertKeyDoesNotExist(t, client, "does/not/exist")
 	})
 
 	t.Run("passes for a key that was removed", func(t *testing.T) {
@@ -77,7 +76,7 @@ func TestAssertKeyDoesNotExist(t *testing.T) {
 			remove.TheKey("app/status"),
 		))
 
-		etcdfixture.AssertKeyDoesNotExist(t, client, "app/status")
+		fixture.AssertKeyDoesNotExist(t, client, "app/status")
 	})
 }
 
@@ -87,16 +86,16 @@ func TestRevisionOf(t *testing.T) {
 	alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 
 	t.Run("returns the revision of the store, which every write increments", func(t *testing.T) {
-		before := etcdfixture.RevisionOf(t, client)
+		before := fixture.RevisionOf(t, client)
 
 		require.NoError(t, alice.AttemptsTo(put.TheValue("ready").ForTheKey("app/status")))
 
-		assert.Equal(t, before+1, etcdfixture.RevisionOf(t, client))
+		assert.Equal(t, before+1, fixture.RevisionOf(t, client))
 	})
 
 	t.Run("returns the same revision while nothing is written", func(t *testing.T) {
-		before := etcdfixture.RevisionOf(t, client)
+		before := fixture.RevisionOf(t, client)
 
-		assert.Equal(t, before, etcdfixture.RevisionOf(t, client))
+		assert.Equal(t, before, fixture.RevisionOf(t, client))
 	})
 }
