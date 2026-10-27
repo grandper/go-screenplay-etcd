@@ -6,6 +6,7 @@ import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
 )
@@ -24,11 +25,11 @@ func TestLocks(t *testing.T) {
 		alice, bob := newOperations(t), newOperations(t)
 
 		require.NoError(t, alice.ToAcquireTheLock(t.Context(), "deployment", false))
-		require.ErrorIs(t, bob.ToAcquireTheLock(t.Context(), "deployment", true), ability.ErrLocked)
-		require.ErrorIs(t, alice.ToAcquireTheLock(t.Context(), "deployment", true), ability.ErrLockAlreadyHeld)
+		require.ErrorIs(t, bob.ToAcquireTheLock(t.Context(), "deployment", true), etcd.ErrLocked)
+		require.ErrorIs(t, alice.ToAcquireTheLock(t.Context(), "deployment", true), etcd.ErrLockAlreadyHeld)
 
 		require.NoError(t, alice.ToReleaseTheLock(t.Context(), "deployment"))
-		require.ErrorIs(t, alice.ToReleaseTheLock(t.Context(), "deployment"), ability.ErrLockNotHeld)
+		require.ErrorIs(t, alice.ToReleaseTheLock(t.Context(), "deployment"), etcd.ErrLockNotHeld)
 		require.NoError(t, bob.ToAcquireTheLock(t.Context(), "deployment", false))
 	})
 

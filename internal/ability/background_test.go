@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
 )
@@ -47,7 +48,7 @@ func TestBackground(t *testing.T) {
 			return isExpired(t, first) && isExpired(t, second)
 		}, 15*time.Second, 200*time.Millisecond, "the renewals should stop once the ability is forgotten")
 		_, err = alice.ToRetrieveTheEvents("app/status", false)
-		require.ErrorIs(t, err, ability.ErrNotWatching, "the watch should stop once the ability is forgotten")
+		require.ErrorIs(t, err, etcd.ErrNotWatching, "the watch should stop once the ability is forgotten")
 	})
 
 	t.Run("runs nothing when the actor never used it", func(t *testing.T) {

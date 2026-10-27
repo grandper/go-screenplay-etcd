@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
 )
@@ -81,8 +82,8 @@ func TestSession(t *testing.T) {
 
 		require.NoError(t, theAbility.Forget())
 
-		require.ErrorIs(t, alice.ToReleaseTheLock(t.Context(), "forgotten"), ability.ErrLockNotHeld)
-		require.ErrorIs(t, alice.ToResign(t.Context(), "forgotten-worker"), ability.ErrNotCampaigning)
+		require.ErrorIs(t, alice.ToReleaseTheLock(t.Context(), "forgotten"), etcd.ErrLockNotHeld)
+		require.ErrorIs(t, alice.ToResign(t.Context(), "forgotten-worker"), etcd.ErrNotCampaigning)
 	})
 
 	t.Run("is never opened by an ability that only uses keys", func(t *testing.T) {
@@ -102,10 +103,10 @@ func TestSession(t *testing.T) {
 	t.Run("fails to open when no endpoint was provided", func(t *testing.T) {
 		alice := ability.TheAbilityOf(screenplay.ActorNamed("Alice").WhoCan(ability.UseETCD()))
 
-		require.ErrorIs(t, alice.ToAcquireTheLock(t.Context(), "deployment", false), ability.ErrNoEndpointProvided)
-		require.ErrorIs(t, alice.ToCampaign(t.Context(), "primary-worker", "Alice"), ability.ErrNoEndpointProvided)
+		require.ErrorIs(t, alice.ToAcquireTheLock(t.Context(), "deployment", false), etcd.ErrNoEndpointProvided)
+		require.ErrorIs(t, alice.ToCampaign(t.Context(), "primary-worker", "Alice"), etcd.ErrNoEndpointProvided)
 		_, err := alice.ToRetrieveTheLeader(t.Context(), "primary-worker")
-		require.ErrorIs(t, err, ability.ErrNoEndpointProvided)
+		require.ErrorIs(t, err, etcd.ErrNoEndpointProvided)
 	})
 
 	t.Run("fails to open when the actor does not have the ability", func(t *testing.T) {

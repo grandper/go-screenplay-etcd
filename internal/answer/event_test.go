@@ -1,4 +1,4 @@
-package ability_test
+package answer_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/grandper/go-screenplay-etcd/internal/ability"
+	"github.com/grandper/go-screenplay-etcd/internal/answer"
 )
 
 func TestEvent(t *testing.T) {
@@ -16,7 +16,7 @@ func TestEvent(t *testing.T) {
 	t.Run("holds the parts of a put that created the key", func(t *testing.T) {
 		t.Parallel()
 
-		event := ability.NewEvent(&clientv3.Event{
+		event := answer.NewEvent(&clientv3.Event{
 			Type: mvccpb.PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            []byte("app/status"),
@@ -40,7 +40,7 @@ func TestEvent(t *testing.T) {
 	t.Run("holds the previous value of a put that overwrote the key", func(t *testing.T) {
 		t.Parallel()
 
-		event := ability.NewEvent(&clientv3.Event{
+		event := answer.NewEvent(&clientv3.Event{
 			Type: mvccpb.PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            []byte("app/status"),
@@ -68,7 +68,7 @@ func TestEvent(t *testing.T) {
 	t.Run("holds the parts of a delete, whose value and version are gone", func(t *testing.T) {
 		t.Parallel()
 
-		event := ability.NewEvent(&clientv3.Event{
+		event := answer.NewEvent(&clientv3.Event{
 			Type: mvccpb.DELETE,
 			Kv:   &mvccpb.KeyValue{Key: []byte("app/status"), ModRevision: 9},
 			PrevKv: &mvccpb.KeyValue{
@@ -93,7 +93,7 @@ func TestEvent(t *testing.T) {
 	t.Run("tells when a delete was caused by the expiry of the lease", func(t *testing.T) {
 		t.Parallel()
 
-		event := ability.NewEvent(&clientv3.Event{
+		event := answer.NewEvent(&clientv3.Event{
 			Type:   mvccpb.DELETE,
 			Kv:     &mvccpb.KeyValue{Key: []byte("locks/batch-job"), ModRevision: 9},
 			PrevKv: &mvccpb.KeyValue{Key: []byte("locks/batch-job"), Value: []byte("held"), Lease: 42},
@@ -107,7 +107,7 @@ func TestEvent(t *testing.T) {
 	t.Run("holds no previous value when the store sent none", func(t *testing.T) {
 		t.Parallel()
 
-		event := ability.NewEvent(&clientv3.Event{
+		event := answer.NewEvent(&clientv3.Event{
 			Type: mvccpb.DELETE,
 			Kv:   &mvccpb.KeyValue{Key: []byte("app/status"), ModRevision: 9},
 		}, false)

@@ -1,4 +1,4 @@
-package ability_test
+package answer_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 
-	"github.com/grandper/go-screenplay-etcd/internal/ability"
+	"github.com/grandper/go-screenplay-etcd/internal/answer"
 )
 
 func TestKey(t *testing.T) {
@@ -15,7 +15,7 @@ func TestKey(t *testing.T) {
 	t.Run("holds the parts of the key the store answered with", func(t *testing.T) {
 		t.Parallel()
 
-		key := ability.NewKey(&mvccpb.KeyValue{
+		key := answer.NewKey(&mvccpb.KeyValue{
 			Key:            []byte("app/config/database"),
 			Value:          []byte("postgresql://localhost:5432"),
 			Version:        3,
@@ -36,7 +36,7 @@ func TestKey(t *testing.T) {
 	t.Run("holds an empty value and no lease when the store answered with none", func(t *testing.T) {
 		t.Parallel()
 
-		key := ability.NewKey(&mvccpb.KeyValue{Key: []byte("app/config/empty"), Version: 1})
+		key := answer.NewKey(&mvccpb.KeyValue{Key: []byte("app/config/empty"), Version: 1})
 
 		assert.True(t, key.Exists())
 		assert.Empty(t, key.Value())
@@ -46,7 +46,7 @@ func TestKey(t *testing.T) {
 	t.Run("holds nothing but its name when it does not exist", func(t *testing.T) {
 		t.Parallel()
 
-		key := ability.NewMissingKey("does/not/exist")
+		key := answer.NewMissingKey("does/not/exist")
 
 		assert.False(t, key.Exists())
 		assert.Equal(t, "does/not/exist", key.Name())

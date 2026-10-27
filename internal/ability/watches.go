@@ -10,6 +10,8 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
+	"github.com/grandper/go-screenplay-etcd/internal/answer"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
 
@@ -33,11 +35,11 @@ func (id watchID) describe() (string, string) {
 // prefix, in the order they happened.
 type watch struct {
 	mutex  sync.RWMutex
-	events []*Event
+	events []*answer.Event
 }
 
 // record appends an event to the watch.
-func (w *watch) record(event *Event) {
+func (w *watch) record(event *answer.Event) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -45,18 +47,18 @@ func (w *watch) record(event *Event) {
 }
 
 // recorded returns a copy of the events of the watch, never nil.
-func (w *watch) recorded() []*Event {
+func (w *watch) recorded() []*answer.Event {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
 
-	return slices.Clone(append([]*Event{}, w.events...))
+	return slices.Clone(append([]*answer.Event{}, w.events...))
 }
 
 // ToWatch watches the key, or the keys starting with it when withPrefix is
 // true, and records every event the store notifies until the ability is
 // forgotten. It returns once the store confirmed the watch, so that a change
 // made right after it is recorded. It fails with an error wrapping
-// ErrAlreadyWatching when the key, or the prefix, is already watched.
+// etcd.ErrAlreadyWatching when the key, or the prefix, is already watched.
 func (o *Operations) ToWatch(ctx context.Context, key string, withPrefix bool) error {
 	client, err := o.client()
 	if err != nil {
@@ -86,7 +88,7 @@ func (o *Operations) ToWatch(ctx context.Context, key string, withPrefix bool) e
 	case <-created:
 		return nil
 	case <-ended:
-		return fmt.Errorf("%w: the watch was canceled", ErrFailedToConnect)
+		return fmt.Errorf("%w: the watch was canceled", etcd.ErrFailedToConnect)
 	case <-ctx.Done():
 		return ctx.Err()
 	}
@@ -115,7 +117,7 @@ func (o *Operations) recordTheEvents(
 		}
 
 		for _, event := range response.Events {
-			theWatch.record(NewEvent(event, o.causedByLeaseExpiry(ctx, client, event)))
+			theWatch.record(answer.NewEvent(event, o.causedByLeaseExpiry(ctx, client, event)))
 		}
 	}
 }
@@ -141,9 +143,9 @@ func (o *Operations) causedByLeaseExpiry(ctx context.Context, client *clientv3.C
 
 // ToRetrieveTheEvents returns the events recorded so far on the watched key,
 // or on the watched keys starting with it when withPrefix is true, in the
-// order they happened. It fails with an error wrapping ErrNotWatching when the
+// order they happened. It fails with an error wrapping etcd.ErrNotWatching when the
 // key, or the prefix, is not watched.
-func (o *Operations) ToRetrieveTheEvents(key string, withPrefix bool) ([]*Event, error) {
+func (o *Operations) ToRetrieveTheEvents(key string, withPrefix bool) ([]*answer.Event, error) {
 	if o.ability == nil {
 		return nil, screenplay.ErrActorMissingAbility
 	}
@@ -154,14 +156,14 @@ func (o *Operations) ToRetrieveTheEvents(key string, withPrefix bool) ([]*Event,
 	if !watched {
 		subject, verb := id.describe()
 
-		return nil, fmt.Errorf("%s %s %w", subject, verb, ErrNotWatching)
+		return nil, fmt.Errorf("%s %s %w", subject, verb, etcd.ErrNotWatching)
 	}
 
 	return theWatch.recorded(), nil
 }
 
 // addTheWatch registers a watch on the ability, and fails with an error
-// wrapping ErrAlreadyWatching when one is already registered.
+// wrapping etcd.ErrAlreadyWatching when one is already registered.
 func (a *UseETCDAbility) addTheWatch(id watchID) (*watch, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -173,7 +175,7 @@ func (a *UseETCDAbility) addTheWatch(id watchID) (*watch, error) {
 	if _, watched := a.watches[id]; watched {
 		subject, verb := id.describe()
 
-		return nil, fmt.Errorf("%s %s %w", subject, verb, ErrAlreadyWatching)
+		return nil, fmt.Errorf("%s %s %w", subject, verb, etcd.ErrAlreadyWatching)
 	}
 
 	theWatch := &watch{}

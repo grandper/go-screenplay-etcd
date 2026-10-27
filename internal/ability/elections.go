@@ -8,13 +8,14 @@ import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	"go.etcd.io/etcd/client/v3/concurrency"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
 
 // ToCampaign campaigns in the election of the given name with the value, and
 // returns once the actor leads the election, which may wait for the leader to
 // resign. The leadership is given up by ToResign, or when the ability is
-// forgotten. It fails with an error wrapping ErrAlreadyCampaigning when the
+// forgotten. It fails with an error wrapping etcd.ErrAlreadyCampaigning when the
 // actor already campaigns in the election.
 func (o *Operations) ToCampaign(ctx context.Context, name, value string) error {
 	session, err := o.session()
@@ -40,7 +41,7 @@ func (o *Operations) ToCampaign(ctx context.Context, name, value string) error {
 }
 
 // ToResign resigns from the election of the given name, giving up its
-// leadership. It fails with an error wrapping ErrNotCampaigning when the actor
+// leadership. It fails with an error wrapping etcd.ErrNotCampaigning when the actor
 // does not campaign in the election.
 func (o *Operations) ToResign(ctx context.Context, name string) error {
 	if o.ability == nil {
@@ -49,7 +50,7 @@ func (o *Operations) ToResign(ctx context.Context, name string) error {
 
 	election, campaigning := o.ability.theElection(name)
 	if !campaigning {
-		return fmt.Errorf("%w in the election %s", ErrNotCampaigning, verdict.Describe(name))
+		return fmt.Errorf("%w in the election %s", etcd.ErrNotCampaigning, verdict.Describe(name))
 	}
 
 	ctx, cancel := o.ability.context(ctx)
@@ -91,7 +92,7 @@ func (o *Operations) ToRetrieveTheLeader(ctx context.Context, name string) (stri
 }
 
 // addTheElection registers the election the actor campaigns in, and fails
-// with an error wrapping ErrAlreadyCampaigning when it is already registered.
+// with an error wrapping etcd.ErrAlreadyCampaigning when it is already registered.
 func (a *UseETCDAbility) addTheElection(session *concurrency.Session, name string) (*concurrency.Election, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -101,7 +102,7 @@ func (a *UseETCDAbility) addTheElection(session *concurrency.Session, name strin
 	}
 
 	if _, campaigning := a.elections[name]; campaigning {
-		return nil, fmt.Errorf("%w in the election %s", ErrAlreadyCampaigning, verdict.Describe(name))
+		return nil, fmt.Errorf("%w in the election %s", etcd.ErrAlreadyCampaigning, verdict.Describe(name))
 	}
 
 	election := concurrency.NewElection(session, name)

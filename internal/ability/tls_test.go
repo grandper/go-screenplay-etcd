@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
 )
@@ -74,8 +75,8 @@ func TestTLS(t *testing.T) {
 
 		err := alice.ToPut(t.Context(), "app/status", "ready", 0)
 
-		require.ErrorIs(t, err, ability.ErrFailedToConnect)
-		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, etcd.ErrFailedToConnect)
+		require.ErrorIs(t, err, etcd.ErrFailedToLoadTheCertificates)
 		require.ErrorIs(t, err, os.ErrNotExist)
 	})
 
@@ -88,7 +89,7 @@ func TestTLS(t *testing.T) {
 
 		err := alice.ToPut(t.Context(), "app/status", "ready", 0)
 
-		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, etcd.ErrFailedToLoadTheCertificates)
 		require.EqualError(t, err, fmt.Sprintf(
 			"failed to connect to the etcd server: failed to load the certificates: %q holds no certificate",
 			notACertificate,
@@ -103,7 +104,7 @@ func TestTLS(t *testing.T) {
 
 		err := alice.ToPut(t.Context(), "app/status", "ready", 0)
 
-		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, etcd.ErrFailedToLoadTheCertificates)
 		require.ErrorIs(t, err, os.ErrNotExist)
 	})
 
@@ -115,7 +116,7 @@ func TestTLS(t *testing.T) {
 
 		err := alice.ToPut(t.Context(), "app/status", "ready", 0)
 
-		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, etcd.ErrFailedToLoadTheCertificates)
 		require.ErrorIs(t, err, os.ErrNotExist)
 	})
 
@@ -127,7 +128,7 @@ func TestTLS(t *testing.T) {
 
 		err := alice.ToPut(t.Context(), "app/status", "ready", 0)
 
-		require.ErrorIs(t, err, ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, err, etcd.ErrFailedToLoadTheCertificates)
 	})
 
 	t.Run("reports the certificates when the ability is first used, not when it is given", func(t *testing.T) {
@@ -135,7 +136,7 @@ func TestTLS(t *testing.T) {
 		alice := newOperations(t, theAbility)
 
 		require.NotNil(t, theAbility, "giving the certificates never fails")
-		require.ErrorIs(t, alice.ToPut(t.Context(), "app/status", "ready", 0), ability.ErrFailedToLoadTheCertificates)
+		require.ErrorIs(t, alice.ToPut(t.Context(), "app/status", "ready", 0), etcd.ErrFailedToLoadTheCertificates)
 	})
 
 	t.Run("does nothing on a nil receiver", func(t *testing.T) {

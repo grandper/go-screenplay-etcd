@@ -5,6 +5,8 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/clientv3util"
+
+	"github.com/grandper/go-screenplay-etcd/internal/answer"
 )
 
 // ToPut puts the value for the key, creating the key or overwriting its value.
@@ -37,7 +39,7 @@ func withTheLease(lease clientv3.LeaseID) []clientv3.OpOption {
 // ToRetrieveTheKey retrieves the key with its value and its metadata. A key
 // that does not exist is answered as a Key that does not exist, not as an
 // error.
-func (o *Operations) ToRetrieveTheKey(ctx context.Context, key string) (*Key, error) {
+func (o *Operations) ToRetrieveTheKey(ctx context.Context, key string) (*answer.Key, error) {
 	client, err := o.client()
 	if err != nil {
 		return nil, err
@@ -52,10 +54,10 @@ func (o *Operations) ToRetrieveTheKey(ctx context.Context, key string) (*Key, er
 	}
 
 	if len(response.Kvs) == 0 {
-		return NewMissingKey(key), nil
+		return answer.NewMissingKey(key), nil
 	}
 
-	return NewKey(response.Kvs[0]), nil
+	return answer.NewKey(response.Kvs[0]), nil
 }
 
 // ToRemove removes the key. Removing a key that does not exist is not an error.
@@ -114,7 +116,7 @@ func (o *Operations) ToRemoveTheKeysStartingWith(ctx context.Context, prefix str
 // ToRetrieveTheKeysStartingWith retrieves every key starting with the prefix,
 // with its value and its metadata, in the order of the keys. When no key
 // starts with the prefix, it answers an empty slice, not an error.
-func (o *Operations) ToRetrieveTheKeysStartingWith(ctx context.Context, prefix string) ([]*Key, error) {
+func (o *Operations) ToRetrieveTheKeysStartingWith(ctx context.Context, prefix string) ([]*answer.Key, error) {
 	client, err := o.client()
 	if err != nil {
 		return nil, err
@@ -128,9 +130,9 @@ func (o *Operations) ToRetrieveTheKeysStartingWith(ctx context.Context, prefix s
 		return nil, err
 	}
 
-	keys := make([]*Key, 0, len(response.Kvs))
+	keys := make([]*answer.Key, 0, len(response.Kvs))
 	for _, kv := range response.Kvs {
-		keys = append(keys, NewKey(kv))
+		keys = append(keys, answer.NewKey(kv))
 	}
 
 	return keys, nil

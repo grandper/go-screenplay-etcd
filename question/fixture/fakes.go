@@ -5,13 +5,13 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/grandper/go-screenplay-etcd/etcd"
-	impl "github.com/grandper/go-screenplay-etcd/internal/ability"
+	"github.com/grandper/go-screenplay-etcd/internal/answer"
 )
 
 // CreateFakeExistingKey creates a fake key that exists, holding the value, as
 // if it had just been created at the first revision of the store.
 func CreateFakeExistingKey(name, value string) *etcd.Key {
-	return impl.NewKey(&mvccpb.KeyValue{
+	return answer.NewKey(&mvccpb.KeyValue{
 		Key:            []byte(name),
 		Value:          []byte(value),
 		Version:        1,
@@ -22,13 +22,13 @@ func CreateFakeExistingKey(name, value string) *etcd.Key {
 
 // CreateFakeMissingKey creates a fake key that does not exist.
 func CreateFakeMissingKey(name string) *etcd.Key {
-	return impl.NewMissingKey(name)
+	return answer.NewMissingKey(name)
 }
 
 // CreateFakePutEvent creates a fake event that created the key with the value,
 // at the first revision of the store.
 func CreateFakePutEvent(key, value string) *etcd.Event {
-	return impl.NewEvent(&clientv3.Event{
+	return answer.NewEvent(&clientv3.Event{
 		Type: mvccpb.PUT,
 		Kv: &mvccpb.KeyValue{
 			Key:            []byte(key),
@@ -43,13 +43,13 @@ func CreateFakePutEvent(key, value string) *etcd.Event {
 // CreateFakeDeleteEvent creates a fake event that removed the key, which held
 // the previous value, at the second revision of the store.
 func CreateFakeDeleteEvent(key, previousValue string) *etcd.Event {
-	return impl.NewEvent(deleteEvent(key, previousValue, 0), false)
+	return answer.NewEvent(deleteEvent(key, previousValue, 0), false)
 }
 
 // CreateFakeExpiryEvent creates a fake event that removed the key, which held
 // the previous value, because its lease expired.
 func CreateFakeExpiryEvent(key, previousValue string) *etcd.Event {
-	return impl.NewEvent(deleteEvent(key, previousValue, 1), true)
+	return answer.NewEvent(deleteEvent(key, previousValue, 1), true)
 }
 
 // The revisions of the store at which a fake key is created and removed.
@@ -81,5 +81,5 @@ func deleteEvent(key, previousValue string, lease int64) *clientv3.Event {
 // CreateFakeAlarm creates a fake alarm of the given type, such as "NOSPACE",
 // raised by the member.
 func CreateFakeAlarm(memberID uint64, alarmType string) *etcd.Alarm {
-	return impl.NewAlarm(memberID, alarmType)
+	return answer.NewAlarm(memberID, alarmType)
 }

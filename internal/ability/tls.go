@@ -5,6 +5,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+
+	"github.com/grandper/go-screenplay-etcd/etcd"
 )
 
 // WithTheCertificateAuthority makes the ability trust the servers whose
@@ -68,19 +70,19 @@ func (a *UseETCDAbility) tlsConfig() (*tls.Config, error) {
 	if a.caFile != "" {
 		authorities, err := os.ReadFile(a.caFile)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrFailedToLoadTheCertificates, err)
+			return nil, fmt.Errorf("%w: %w", etcd.ErrFailedToLoadTheCertificates, err)
 		}
 
 		config.RootCAs = x509.NewCertPool()
 		if !config.RootCAs.AppendCertsFromPEM(authorities) {
-			return nil, fmt.Errorf("%w: %q holds no certificate", ErrFailedToLoadTheCertificates, a.caFile)
+			return nil, fmt.Errorf("%w: %q holds no certificate", etcd.ErrFailedToLoadTheCertificates, a.caFile)
 		}
 	}
 
 	if a.certFile != "" || a.keyFile != "" {
 		certificate, err := tls.LoadX509KeyPair(a.certFile, a.keyFile)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrFailedToLoadTheCertificates, err)
+			return nil, fmt.Errorf("%w: %w", etcd.ErrFailedToLoadTheCertificates, err)
 		}
 
 		config.Certificates = []tls.Certificate{certificate}

@@ -8,14 +8,15 @@ import (
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/internal/verdict"
 )
 
 // ToAcquireTheLock acquires the distributed lock of the given name, waiting
 // for the actor holding it to release it unless withoutWaiting is true, in
-// which case it fails with ErrLocked. The lock is released by
+// which case it fails with etcd.ErrLocked. The lock is released by
 // ToReleaseTheLock, or when the ability is forgotten. It fails with an error
-// wrapping ErrLockAlreadyHeld when the actor already holds the lock.
+// wrapping etcd.ErrLockAlreadyHeld when the actor already holds the lock.
 func (o *Operations) ToAcquireTheLock(ctx context.Context, name string, withoutWaiting bool) error {
 	session, err := o.session()
 	if err != nil {
@@ -46,7 +47,7 @@ func (o *Operations) ToAcquireTheLock(ctx context.Context, name string, withoutW
 }
 
 // ToReleaseTheLock releases the distributed lock of the given name. It fails
-// with an error wrapping ErrLockNotHeld when the actor does not hold the lock.
+// with an error wrapping etcd.ErrLockNotHeld when the actor does not hold the lock.
 func (o *Operations) ToReleaseTheLock(ctx context.Context, name string) error {
 	if o.ability == nil {
 		return screenplay.ErrActorMissingAbility
@@ -54,7 +55,7 @@ func (o *Operations) ToReleaseTheLock(ctx context.Context, name string) error {
 
 	lock, held := o.ability.theLock(name)
 	if !held {
-		return fmt.Errorf("the lock %s is %w", verdict.Describe(name), ErrLockNotHeld)
+		return fmt.Errorf("the lock %s is %w", verdict.Describe(name), etcd.ErrLockNotHeld)
 	}
 
 	ctx, cancel := o.ability.context(ctx)
@@ -70,7 +71,7 @@ func (o *Operations) ToReleaseTheLock(ctx context.Context, name string) error {
 }
 
 // addTheLock registers the lock the actor is acquiring, and fails with an
-// error wrapping ErrLockAlreadyHeld when it is already registered.
+// error wrapping etcd.ErrLockAlreadyHeld when it is already registered.
 func (a *UseETCDAbility) addTheLock(session *concurrency.Session, name string) (*concurrency.Mutex, error) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -80,7 +81,7 @@ func (a *UseETCDAbility) addTheLock(session *concurrency.Session, name string) (
 	}
 
 	if _, held := a.locks[name]; held {
-		return nil, fmt.Errorf("the lock %s is %w", verdict.Describe(name), ErrLockAlreadyHeld)
+		return nil, fmt.Errorf("the lock %s is %w", verdict.Describe(name), etcd.ErrLockAlreadyHeld)
 	}
 
 	lock := concurrency.NewMutex(session, name)

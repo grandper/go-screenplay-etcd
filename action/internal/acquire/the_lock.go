@@ -23,7 +23,7 @@ type TheLockAction struct {
 	withoutWaiting bool
 }
 
-// WithoutWaiting makes the action fail, with ability.ErrLocked, when another
+// WithoutWaiting makes the action fail, with etcd.ErrLocked, when another
 // actor holds the lock, instead of waiting for it; it reads "without waiting".
 func (a *TheLockAction) WithoutWaiting() *TheLockAction {
 	a.withoutWaiting = true

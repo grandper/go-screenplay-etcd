@@ -12,6 +12,8 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/namespace"
+
+	"github.com/grandper/go-screenplay-etcd/etcd"
 )
 
 // UseETCD enables the actor to use an etcd store. The ability is configured
@@ -157,17 +159,17 @@ func (a *UseETCDAbility) connect() (*clientv3.Client, error) {
 
 	if a.client == nil {
 		if len(a.endpoints) == 0 {
-			return nil, ErrNoEndpointProvided
+			return nil, etcd.ErrNoEndpointProvided
 		}
 
 		tlsConfig, err := a.tlsConfig()
 		if err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrFailedToConnect, err)
+			return nil, fmt.Errorf("%w: %w", etcd.ErrFailedToConnect, err)
 		}
 
 		client, err := clientv3.New(clientv3.Config{Endpoints: a.endpoints, TLS: tlsConfig})
 		if err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrFailedToConnect, err)
+			return nil, fmt.Errorf("%w: %w", etcd.ErrFailedToConnect, err)
 		}
 
 		a.client = client

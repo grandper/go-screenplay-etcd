@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
 )
@@ -30,7 +31,7 @@ func TestWatches(t *testing.T) {
 
 		require.NoError(t, theAbility.Forget())
 		_, err := operations.ToRetrieveTheEvents("app/status", false)
-		require.ErrorIs(t, err, ability.ErrNotWatching)
+		require.ErrorIs(t, err, etcd.ErrNotWatching)
 	})
 
 	t.Run("records the events on the keys starting with a watched prefix", func(t *testing.T) {
@@ -48,7 +49,7 @@ func TestWatches(t *testing.T) {
 		}, 15*time.Second, 100*time.Millisecond)
 
 		_, err := operations.ToRetrieveTheEvents("app/config/", false)
-		require.ErrorIs(t, err, ability.ErrNotWatching, "a watch of the key is not a watch of the prefix")
+		require.ErrorIs(t, err, etcd.ErrNotWatching, "a watch of the key is not a watch of the prefix")
 	})
 
 	t.Run("refuses to watch a key twice", func(t *testing.T) {
@@ -57,7 +58,7 @@ func TestWatches(t *testing.T) {
 		t.Cleanup(func() { require.NoError(t, theAbility.Forget()) })
 		require.NoError(t, operations.ToWatch(t.Context(), "app/status", false))
 
-		require.ErrorIs(t, operations.ToWatch(t.Context(), "app/status", false), ability.ErrAlreadyWatching)
+		require.ErrorIs(t, operations.ToWatch(t.Context(), "app/status", false), etcd.ErrAlreadyWatching)
 		require.NoError(t, operations.ToWatch(t.Context(), "app/status", true), "a prefix is another watch")
 	})
 

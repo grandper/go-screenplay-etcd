@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/fixture"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
 )
@@ -29,14 +30,14 @@ func TestElections(t *testing.T) {
 		assert.Empty(t, leader)
 
 		require.NoError(t, alice.ToCampaign(t.Context(), "primary-worker", "node-1"))
-		require.ErrorIs(t, alice.ToCampaign(t.Context(), "primary-worker", "node-1"), ability.ErrAlreadyCampaigning)
+		require.ErrorIs(t, alice.ToCampaign(t.Context(), "primary-worker", "node-1"), etcd.ErrAlreadyCampaigning)
 
 		leader, err = bob.ToRetrieveTheLeader(t.Context(), "primary-worker")
 		require.NoError(t, err)
 		assert.Equal(t, "node-1", leader)
 
 		require.NoError(t, alice.ToResign(t.Context(), "primary-worker"))
-		require.ErrorIs(t, alice.ToResign(t.Context(), "primary-worker"), ability.ErrNotCampaigning)
+		require.ErrorIs(t, alice.ToResign(t.Context(), "primary-worker"), etcd.ErrNotCampaigning)
 
 		leader, err = bob.ToRetrieveTheLeader(t.Context(), "primary-worker")
 		require.NoError(t, err)
