@@ -44,6 +44,22 @@ func TestElections(t *testing.T) {
 		assert.Empty(t, leader)
 	})
 
+	t.Run("retrieves the leader without opening a session", func(t *testing.T) {
+		client := server.NewClient(t)
+		alice, bob := newOperations(t), newOperations(t)
+		require.NoError(t, alice.ToCampaign(t.Context(), "observed", "node-1"))
+		before, err := client.Leases(t.Context())
+		require.NoError(t, err)
+
+		leader, err := bob.ToRetrieveTheLeader(t.Context(), "observed")
+
+		require.NoError(t, err)
+		assert.Equal(t, "node-1", leader)
+		after, err := client.Leases(t.Context())
+		require.NoError(t, err)
+		assert.Len(t, after.Leases, len(before.Leases), "reading the leader grants no lease")
+	})
+
 	t.Run("resigns when the ability is forgotten", func(t *testing.T) {
 		theAbility := ability.UseETCD().WithTheEndpoints(server.Endpoint())
 		alice := ability.TheAbilityOf(screenplay.ActorNamed("Alice").WhoCan(theAbility))

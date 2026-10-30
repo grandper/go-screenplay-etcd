@@ -2,10 +2,10 @@ package ability
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 
 	"github.com/grandper/go-screenplay-etcd/etcd"
@@ -66,9 +66,10 @@ func (o *Operations) ToResign(ctx context.Context, name string) error {
 }
 
 // ToRetrieveTheLeader retrieves the value of the leader of the election of the
-// given name, empty when the election has no leader.
+// given name, empty when the election has no leader. Reading the leader needs
+// no session: the ability opens one only for the actor who campaigns.
 func (o *Operations) ToRetrieveTheLeader(ctx context.Context, name string) (string, error) {
-	session, err := o.session(ctx)
+	client, err := o.client(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -76,10 +77,9 @@ func (o *Operations) ToRetrieveTheLeader(ctx context.Context, name string) (stri
 	ctx, cancel := o.ability.context(ctx)
 	defer cancel()
 
-	response, err := concurrency.NewElection(session, name).Leader(ctx)
-	if errors.Is(err, concurrency.ErrElectionNoLeader) {
-		return "", nil
-	}
+	// The etcd client keeps the candidates of an election under "name/", one
+	// key per session, and the leader is the one created first.
+	response, err := client.Get(ctx, name+"/", clientv3.WithFirstCreate()...)
 	if err != nil {
 		return "", err
 	}
