@@ -1,9 +1,9 @@
 module github.com/grandper/go-screenplay-etcd
 
-go 1.27.2
+go 1.27.3
 
 require (
-	github.com/grandper/go-screenplay/v2 v2.0.0
+	github.com/grandper/go-screenplay/v2 v2.1.0
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/etcd/api/v3 v3.7.2
 	go.etcd.io/etcd/client/pkg/v3 v3.7.2

@@ -34,8 +34,8 @@ github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aN
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/grandper/go-monad v1.0.1 h1:Wzgj9DG0z2NE+vo0rHGgU2aI1Glmhj4ZhzhkBnedUEQ=
 github.com/grandper/go-monad v1.0.1/go.mod h1:onHz2HKXbMZdd35uTwa/fqNQ44GMaDjoTXRiU8a1VQg=
-github.com/grandper/go-screenplay/v2 v2.0.0 h1:7BCkeG68T67kJxG20eGyjAszcTl/7KJqqCnAJgr72YQ=
-github.com/grandper/go-screenplay/v2 v2.0.0/go.mod h1:FoZRJw+wjCzXuiLCbiXTuNabGRO3c0bMSQSj7v6DTmg=
+github.com/grandper/go-screenplay/v2 v2.1.0 h1:KLQuvUxYc8nx3JhmeguyOATAJnph9FaGU0SXr7x4FCE=
+github.com/grandper/go-screenplay/v2 v2.1.0/go.mod h1:BYXqPOxIaFEhnKLKOrO37r8Fn7HiEmD+bHEnNi3Ak4k=
 github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0 h1:QGLs/O40yoNK9vmy4rhUGBVyMf1lISBGtXRpsu/Qu/o=
 github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0/go.mod h1:hM2alZsMUni80N33RBe6J0e423LB+odMj7d3EMP9l20=
 github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 h1:B+8ClL/kCQkRiU82d9xajRPKYMrB7E0MbtzWVi1K4ns=
