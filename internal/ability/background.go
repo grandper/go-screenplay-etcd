@@ -15,8 +15,9 @@ type background struct {
 }
 
 // run starts the function in a goroutine, with a context canceled when the
-// background stops.
-func (b *background) run(run func(ctx context.Context)) {
+// background stops, and returns the function that cancels this goroutine
+// alone, for the caller that gives up on it before the background stops.
+func (b *background) run(run func(ctx context.Context)) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	b.mutex.Lock()
@@ -26,6 +27,8 @@ func (b *background) run(run func(ctx context.Context)) {
 	b.group.Go(func() {
 		run(ctx)
 	})
+
+	return cancel
 }
 
 // stop cancels every goroutine and waits for all of them to return.

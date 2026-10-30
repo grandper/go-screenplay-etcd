@@ -57,7 +57,8 @@ func (w *watch) recorded() []*answer.Event {
 // ToWatch watches the key, or the keys starting with it when withPrefix is
 // true, and records every event the store notifies until the ability is
 // forgotten. It returns once the store confirmed the watch, so that a change
-// made right after it is recorded. It fails with an error wrapping
+// made right after it is recorded; when the context ends first, the watch is
+// dropped, so that it can be attempted again. It fails with an error wrapping
 // etcd.ErrAlreadyWatching when the key, or the prefix, is already watched.
 func (o *Operations) ToWatch(ctx context.Context, key string, withPrefix bool) error {
 	client, err := o.client(ctx)
@@ -75,7 +76,7 @@ func (o *Operations) ToWatch(ctx context.Context, key string, withPrefix bool) e
 	created := make(chan struct{})
 	ended := make(chan struct{})
 
-	o.ability.background.run(func(ctx context.Context) {
+	stop := o.ability.background.run(func(ctx context.Context) {
 		defer close(ended)
 
 		o.recordTheEvents(ctx, client, id, theWatch, created)
@@ -88,8 +89,14 @@ func (o *Operations) ToWatch(ctx context.Context, key string, withPrefix bool) e
 	case <-created:
 		return nil
 	case <-ended:
+		o.ability.removeTheWatch(id)
+
 		return fmt.Errorf("%w: the watch was canceled", etcd.ErrFailedToConnect)
 	case <-ctx.Done():
+		stop()
+		<-ended
+		o.ability.removeTheWatch(id)
+
 		return ctx.Err()
 	}
 }
@@ -192,6 +199,14 @@ func (a *UseETCDAbility) theWatch(id watchID) (*watch, bool) {
 	theWatch, watched := a.watches[id]
 
 	return theWatch, watched
+}
+
+// removeTheWatch drops the watch, once its goroutine is stopped.
+func (a *UseETCDAbility) removeTheWatch(id watchID) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
+	delete(a.watches, id)
 }
 
 // forgetTheWatches drops every watch, once their goroutines are stopped.

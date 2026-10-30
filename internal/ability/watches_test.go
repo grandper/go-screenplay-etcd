@@ -1,6 +1,7 @@
 package ability_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -50,6 +51,22 @@ func TestWatches(t *testing.T) {
 
 		_, err := operations.ToRetrieveTheEvents("app/config/", false)
 		require.ErrorIs(t, err, etcd.ErrNotWatching, "a watch of the key is not a watch of the prefix")
+	})
+
+	t.Run("drops a watch the store did not confirm in time", func(t *testing.T) {
+		theAbility := ability.UseETCD().WithTheEndpoints(server.Endpoint())
+		operations := ability.TheAbilityOf(screenplay.ActorNamed("Alice").WhoCan(theAbility))
+		t.Cleanup(func() { require.NoError(t, theAbility.Forget()) })
+		require.NoError(t, operations.ToPut(t.Context(), "app/status", "ready", 0), "connects beforehand")
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		err := operations.ToWatch(ctx, "app/status", false)
+
+		require.ErrorIs(t, err, context.Canceled)
+		_, err = operations.ToRetrieveTheEvents("app/status", false)
+		require.ErrorIs(t, err, etcd.ErrNotWatching, "the watch that was given up is not registered")
+		require.NoError(t, operations.ToWatch(t.Context(), "app/status", false), "the watch can be attempted again")
 	})
 
 	t.Run("refuses to watch a key twice", func(t *testing.T) {

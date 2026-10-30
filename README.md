@@ -250,7 +250,7 @@ err := actor.AttemptsTo(remove.TheKeysStartingWith(""))
 ```
 
 ### watch.TheKey
-Watches a key: every change made to it from then on is recorded, until the actor exits, where `events.OnTheKey(key)` finds it. The action returns once the cluster confirmed the watch, so a change made right after it is never missed:
+Watches a key: every change made to it from then on is recorded, until the actor exits, where `events.OnTheKey(key)` finds it. The action returns once the cluster confirmed the watch, so a change made right after it is never missed; when the confirmation does not arrive before the timeout of the ability or the deadline of the actor's context, the action fails and the watch is dropped, so it can be attempted again:
 ```go
 err := actor.AttemptsTo(watch.TheKey("app/config/database"))
 // Alice attempts to watch the key "app/config/database"
