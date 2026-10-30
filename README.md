@@ -394,6 +394,11 @@ They fail with an error wrapping `etcd.ErrNotWatching` when the actor does not w
 recorded, err := actor.AsksFor(events.OnTheKey("app/config/cache"))
 // the key "app/config/cache" is not watched
 ```
+Should the cluster cancel a watch, for example because the revision it resumed from after a lost connection was compacted, the changes that follow are not recorded. Both questions then fail with an error wrapping `etcd.ErrFailedToConnect`, rather than answering with an incomplete list:
+```go
+recorded, err := actor.AsksFor(events.OnTheKey("app/config/database"))
+// failed to connect to the etcd server: the watch of the key "app/config/database" was canceled: etcdserver: mvcc: required revision has been compacted
+```
 An `*etcd.Event` is read through `Key()`, `IsPut()` and `IsDelete()`, `Value()` (empty for a delete), `PreviousValue()` (empty when the event created the key), `Revision()`, `Version()` (zero after a delete), and `CausedByLeaseExpiry()`, which tells a key removed because its lease expired from a key an actor removed:
 ```go
 recorded, _ := actor.AsksFor(events.OnTheKey("locks/batch-job")) // recorded is a []*etcd.Event

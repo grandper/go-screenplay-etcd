@@ -2,12 +2,14 @@ package ability_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/grandper/go-screenplay-etcd/etcd"
 	"github.com/grandper/go-screenplay-etcd/internal/ability"
@@ -67,6 +69,26 @@ func TestWatches(t *testing.T) {
 		_, err = operations.ToRetrieveTheEvents("app/status", false)
 		require.ErrorIs(t, err, etcd.ErrNotWatching, "the watch that was given up is not registered")
 		require.NoError(t, operations.ToWatch(t.Context(), "app/status", false), "the watch can be attempted again")
+	})
+
+	t.Run("fails to answer the events once the store canceled the watch", func(t *testing.T) {
+		client, err := clientv3.New(clientv3.Config{Endpoints: []string{server.Endpoint()}})
+		require.NoError(t, err)
+		theAbility := ability.UseETCD().WithTheClient(client)
+		operations := ability.TheAbilityOf(screenplay.ActorNamed("Alice").WhoCan(theAbility))
+		t.Cleanup(func() { require.NoError(t, theAbility.Forget()) })
+		require.NoError(t, operations.ToWatch(t.Context(), "app/status", false))
+
+		// Closing the watcher of the client ends every watch, as the store
+		// does when it cancels one.
+		require.NoError(t, client.Watcher.Close())
+
+		assert.Eventually(t, func() bool {
+			_, err = operations.ToRetrieveTheEvents("app/status", false)
+
+			return errors.Is(err, etcd.ErrFailedToConnect)
+		}, 15*time.Second, 100*time.Millisecond)
+		require.ErrorContains(t, err, `the watch of the key "app/status" was canceled`)
 	})
 
 	t.Run("refuses to watch a key twice", func(t *testing.T) {
