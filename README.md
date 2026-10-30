@@ -420,7 +420,7 @@ err := actor.Should(see.The(leader.OfTheElection("primary-worker")).Should(be.Em
 ```
 
 ### status.OfTheEndpoint
-`status.OfTheEndpoint(endpoint)` answers with the `*etcd.EndpointStatus` of the member of the cluster listening on the endpoint, the way to check that the cluster is up before a scenario starts, and fails when the member cannot be reached. The status is read through `Version()`, `Leader()` (the ID of the member believed to lead the cluster, zero when none is known), `DBSize()` in bytes, `IsLearner()`, and `Errors()`, the alarms and health problems the member reports:
+`status.OfTheEndpoint(endpoint)` answers with the `*etcd.EndpointStatus` of the member of the cluster listening on the endpoint, the way to check that the cluster is up before a scenario starts. It fails when the member cannot be reached, and with `etcd.ErrEndpointNotProvided` when the endpoint is empty. The status is read through `Version()`, `Leader()` (the ID of the member believed to lead the cluster, zero when none is known), `DBSize()` in bytes, `IsLearner()`, and `Errors()`, the alarms and health problems the member reports:
 ```go
 member, err := actor.AsksFor(status.OfTheEndpoint("localhost:2379")) // member is an *etcd.EndpointStatus
 // Alice asks for the status of the endpoint "localhost:2379"
