@@ -20,6 +20,11 @@ func TestErrors(t *testing.T) {
 		require.EqualError(t, etcd.ErrPrefixNotProvided, "the prefix must be provided")
 		require.EqualError(t, etcd.ErrNameNotProvided, "the name must be provided")
 		require.EqualError(t, etcd.ErrEndpointNotProvided, "the endpoint must be provided")
+		require.EqualError(
+			t,
+			etcd.ErrTimeToLiveNotProvided,
+			"the time to live must be provided to keep the key alive",
+		)
 		require.EqualError(t, etcd.ErrKeyNotFound, "was not found")
 		require.EqualError(t, etcd.ErrKeyAlreadyExists, "already exists")
 		require.EqualError(t, etcd.ErrKeyModified, "was modified")
@@ -68,6 +73,7 @@ func TestErrors(t *testing.T) {
 			etcd.ErrPrefixNotProvided,
 			etcd.ErrNameNotProvided,
 			etcd.ErrEndpointNotProvided,
+			etcd.ErrTimeToLiveNotProvided,
 			etcd.ErrKeyNotFound,
 			etcd.ErrKeyAlreadyExists,
 			etcd.ErrKeyModified,

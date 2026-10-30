@@ -164,6 +164,14 @@ func TestTheValue(t *testing.T) {
 			require.ErrorIs(t, alice.AttemptsTo(put.TheValue("v").ForTheKey("")), etcd.ErrKeyNotProvided)
 		})
 
+		t.Run("fails when the key is kept alive without a time to live", func(t *testing.T) {
+			err := alice.AttemptsTo(put.TheValue("v").ForTheKey("app/kept-alive").AndKeepItAlive())
+
+			require.ErrorIs(t, err, etcd.ErrTimeToLiveNotProvided)
+			require.EqualError(t, err, "the time to live must be provided to keep the key alive")
+			fixture.AssertKeyDoesNotExist(t, client, "app/kept-alive")
+		})
+
 		t.Run("fails when the actor cannot use etcd", func(t *testing.T) {
 			bob := screenplay.ActorNamed("Bob")
 

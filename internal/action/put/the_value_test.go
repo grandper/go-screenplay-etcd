@@ -114,12 +114,11 @@ func TestTheValue(t *testing.T) {
 		}, 15*time.Second, 200*time.Millisecond, "the key should expire once the actor exits")
 	})
 
-	t.Run("keeps nothing alive when the key never expires", func(t *testing.T) {
-		require.NoError(t, alice.AttemptsTo(put.TheValue("ready").ForTheKey("app/status").AndKeepItAlive()))
+	t.Run("refuses to keep alive a key that never expires", func(t *testing.T) {
+		err := alice.AttemptsTo(put.TheValue("ready").ForTheKey("app/kept-alive").AndKeepItAlive())
 
-		theKey, err := alice.AsksFor(key.Named("app/status"))
-		require.NoError(t, err)
-		assert.Zero(t, theKey.Lease(), "there is no lease to keep alive")
+		require.ErrorIs(t, err, etcd.ErrTimeToLiveNotProvided)
+		fixture.AssertKeyDoesNotExist(t, client, "app/kept-alive")
 	})
 
 	t.Run("hides a secret value from the narration only", func(t *testing.T) {

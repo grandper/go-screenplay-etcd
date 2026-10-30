@@ -89,7 +89,9 @@ func (a *TheValueAction) ExpiringAfter(amount int) *timing.DurationBuilder[TheVa
 
 // AndKeepItAlive renews the lease of the key in the background for as long as
 // the actor keeps the ability, so that the key expires only once the actor
-// exits; it reads "and keep it alive".
+// exits; it reads "and keep it alive". It needs the time to live given with
+// ExpiringAfter: without one, the action fails with
+// etcd.ErrTimeToLiveNotProvided and puts nothing.
 func (a *TheValueAction) AndKeepItAlive() *TheValueAction {
 	a.keptAlive = true
 
@@ -151,6 +153,10 @@ func (a *TheValueAction) PerformAs(theActor *screenplay.Actor) error {
 		return etcd.ErrKeyNotProvided
 	}
 
+	if a.keptAlive && a.timeToLive <= 0 {
+		return etcd.ErrTimeToLiveNotProvided
+	}
+
 	theAbility := impl.TheAbilityOf(theActor)
 
 	lease, err := a.grantTheLease(theActor, theAbility)
@@ -162,7 +168,7 @@ func (a *TheValueAction) PerformAs(theActor *screenplay.Actor) error {
 		return err
 	}
 
-	if a.keptAlive && lease != clientv3.NoLease {
+	if a.keptAlive {
 		return theAbility.ToKeepTheLeaseAlive(theActor.Context(), lease)
 	}
 

@@ -26,6 +26,11 @@ var (
 	// ErrEndpointNotProvided is returned when a question about an endpoint is
 	// asked with an empty endpoint.
 	ErrEndpointNotProvided = errors.New("the endpoint must be provided")
+
+	// ErrTimeToLiveNotProvided is returned when put.TheValue is to keep the
+	// key alive, with AndKeepItAlive, but was given no time to live with
+	// ExpiringAfter: a key that never expires has no lease to renew.
+	ErrTimeToLiveNotProvided = errors.New("the time to live must be provided to keep the key alive")
 )
 
 // The errors reported by the actions and the questions about the keys.

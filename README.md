@@ -138,7 +138,7 @@ The actions live in packages named after their verb, so that a statement reads a
 err := actor.AttemptsTo(put.TheValue("ready").ForTheKey("app/status"))
 // Alice attempts to put the value "ready" for the key "app/status"
 ```
-Nothing panics when an action is built. A mistake, such as an empty key, is reported when the actor performs the action, with an error of the `etcd` package: `etcd.ErrKeyNotProvided`, `etcd.ErrPrefixNotProvided` or `etcd.ErrNameNotProvided`.
+Nothing panics when an action is built. A mistake, such as an empty key, is reported when the actor performs the action, with an error of the `etcd` package: `etcd.ErrKeyNotProvided`, `etcd.ErrPrefixNotProvided`, `etcd.ErrNameNotProvided` or `etcd.ErrTimeToLiveNotProvided`.
 
 The core actions compose with the ones of this extension as with any other: `keep.TryingTo` retries a put against a cluster that is still starting, `proceed.ConcurrentlyTo` runs several actions at once, and `wait.UntilThe` waits for a question of this extension to answer as expected:
 ```go
@@ -174,6 +174,11 @@ err := actor.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").Expiri
 // Alice attempts to put the value "held" for the key "locks/batch-job" expiring after 10 seconds and keep it alive
 
 err = actor.Exit() // the renewals stop, and the key expires ten seconds later
+```
+A key that never expires has no lease to renew, so `AndKeepItAlive` without `ExpiringAfter` is a mistake: the action fails with `etcd.ErrTimeToLiveNotProvided` and puts nothing:
+```go
+err := actor.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").AndKeepItAlive())
+// the time to live must be provided to keep the key alive
 ```
 To initialize a key only when no one else did, close the statement with `IfTheKeyIsAbsent`: the check and the put happen in one transaction, and a key that exists makes the action fail with an error wrapping `etcd.ErrKeyAlreadyExists`, leaving the cluster untouched:
 ```go
