@@ -163,6 +163,7 @@ err := actor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").
 err := actor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").WhichShouldBeKeptSecret())
 // Alice attempts to put the value <secret> for the key "app/config/password"
 ```
+The narration is the only place the value is hidden: the errors of a conditional put name the key only, but a failing assertion on `value.OfTheKey` reports the value it got, as every resolution does, so do not assert on a secret value in a test whose output is shared.
 A key can be given a time to live with `ExpiringAfter` and a unit (`Seconds`, `Minutes` or `Milliseconds`, with their singular forms): the value is put with a lease, and the cluster removes the key when the lease expires. etcd counts in whole seconds, so the time is rounded up, and a cluster raises a short lease to the minimum it allows (two seconds with the default settings of etcd):
 ```go
 err := actor.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(10).Seconds())
