@@ -18,7 +18,7 @@ import (
 // forgotten. It fails with an error wrapping etcd.ErrAlreadyCampaigning when the
 // actor already campaigns in the election.
 func (o *Operations) ToCampaign(ctx context.Context, name, value string) error {
-	session, err := o.session()
+	session, err := o.session(ctx)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (o *Operations) ToResign(ctx context.Context, name string) error {
 // ToRetrieveTheLeader retrieves the value of the leader of the election of the
 // given name, empty when the election has no leader.
 func (o *Operations) ToRetrieveTheLeader(ctx context.Context, name string) (string, error) {
-	session, err := o.session()
+	session, err := o.session(ctx)
 	if err != nil {
 		return "", err
 	}

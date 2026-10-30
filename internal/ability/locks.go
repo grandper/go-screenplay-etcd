@@ -18,7 +18,7 @@ import (
 // ToReleaseTheLock, or when the ability is forgotten. It fails with an error
 // wrapping etcd.ErrLockAlreadyHeld when the actor already holds the lock.
 func (o *Operations) ToAcquireTheLock(ctx context.Context, name string, withoutWaiting bool) error {
-	session, err := o.session()
+	session, err := o.session(ctx)
 	if err != nil {
 		return err
 	}

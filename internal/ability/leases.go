@@ -12,7 +12,7 @@ import (
 // seconds, which is how etcd counts. A key attached to the lease is removed
 // when the lease expires.
 func (o *Operations) ToGrantALease(ctx context.Context, timeToLive time.Duration) (clientv3.LeaseID, error) {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return clientv3.NoLease, err
 	}
@@ -31,7 +31,7 @@ func (o *Operations) ToGrantALease(ctx context.Context, timeToLive time.Duration
 // ToRetrieveTheTimeToLive retrieves the time the lease has left to live. A
 // lease that expired, or that was revoked, has no time left: zero.
 func (o *Operations) ToRetrieveTheTimeToLive(ctx context.Context, lease clientv3.LeaseID) (time.Duration, error) {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -54,8 +54,8 @@ func (o *Operations) ToRetrieveTheTimeToLive(ctx context.Context, lease clientv3
 // ToKeepTheLeaseAlive renews the lease in the background, for as long as the
 // ability is not forgotten: when the actor exits, the renewals stop and the
 // lease expires.
-func (o *Operations) ToKeepTheLeaseAlive(lease clientv3.LeaseID) error {
-	client, err := o.client()
+func (o *Operations) ToKeepTheLeaseAlive(ctx context.Context, lease clientv3.LeaseID) error {
+	client, err := o.client(ctx)
 	if err != nil {
 		return err
 	}

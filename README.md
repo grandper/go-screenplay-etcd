@@ -65,7 +65,14 @@ Then create an actor who can use etcd, with the endpoints of the cluster in the 
 actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("localhost:2379"))
 actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("etcd-1:2379", "etcd-2:2379", "etcd-3:2379"))
 ```
-The connection is opened the first time the actor uses the ability. An unreachable cluster makes the first action wait for the timeout of the ability (see `WithTimingOutAfter` below) or for the deadline of the actor's context, and fail with `context.DeadlineExceeded`; give the ability one of the two, otherwise the action waits for the cluster indefinitely. An actor given no endpoint fails every action with `etcd.ErrNoEndpointProvided`:
+The connection is opened the first time the actor uses the ability, which waits for it to be ready for the timeout given with `WithTimingOutAfter` (see below), or for five seconds without one. An unreachable cluster is thus reported by the first action, with an error wrapping both `etcd.ErrFailedToConnect` and `context.DeadlineExceeded`:
+```go
+actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("localhost:1"))
+
+err := actor.AttemptsTo(put.TheValue("ready").ForTheKey("app/status"))
+// failed to connect to the etcd server: context deadline exceeded
+```
+An actor given no endpoint fails every action with `etcd.ErrNoEndpointProvided`:
 ```go
 actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD())
 

@@ -13,7 +13,7 @@ import (
 // The key is attached to the lease, so that it is removed when the lease
 // expires; the lease zero attaches the key to no lease.
 func (o *Operations) ToPut(ctx context.Context, key, value string, lease clientv3.LeaseID) error {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func withTheLease(lease clientv3.LeaseID) []clientv3.OpOption {
 // that does not exist is answered as a Key that does not exist, not as an
 // error.
 func (o *Operations) ToRetrieveTheKey(ctx context.Context, key string) (*answer.Key, error) {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (o *Operations) ToRetrieveTheKey(ctx context.Context, key string) (*answer.
 
 // ToRemove removes the key. Removing a key that does not exist is not an error.
 func (o *Operations) ToRemove(ctx context.Context, key string) error {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (o *Operations) ToRemove(ctx context.Context, key string) error {
 // holds some of them without the others. Removing a key that does not exist is
 // not an error.
 func (o *Operations) ToRemoveTheKeys(ctx context.Context, keys ...string) error {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (o *Operations) ToRemoveTheKeys(ctx context.Context, keys ...string) error 
 // ToRemoveTheKeysStartingWith removes every key starting with the prefix.
 // Removing a prefix no key starts with is not an error.
 func (o *Operations) ToRemoveTheKeysStartingWith(ctx context.Context, prefix string) error {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (o *Operations) ToRemoveTheKeysStartingWith(ctx context.Context, prefix str
 // with its value and its metadata, in the order of the keys. When no key
 // starts with the prefix, it answers an empty slice, not an error.
 func (o *Operations) ToRetrieveTheKeysStartingWith(ctx context.Context, prefix string) ([]*answer.Key, error) {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (o *Operations) ToRemoveIfUnchanged(ctx context.Context, key string, revisi
 // ToPutTheValues puts every value for its key in one transaction, so that the
 // store never holds some of them without the others.
 func (o *Operations) ToPutTheValues(ctx context.Context, values map[string]string) error {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func (o *Operations) ToPutTheValues(ctx context.Context, values map[string]strin
 // commit runs the operation in a transaction guarded by the comparison, and
 // returns whether the comparison held and the operation was applied.
 func (o *Operations) commit(ctx context.Context, comparison clientv3.Cmp, operation clientv3.Op) (bool, error) {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return false, err
 	}

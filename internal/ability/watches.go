@@ -60,7 +60,7 @@ func (w *watch) recorded() []*answer.Event {
 // made right after it is recorded. It fails with an error wrapping
 // etcd.ErrAlreadyWatching when the key, or the prefix, is already watched.
 func (o *Operations) ToWatch(ctx context.Context, key string, withPrefix bool) error {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return err
 	}

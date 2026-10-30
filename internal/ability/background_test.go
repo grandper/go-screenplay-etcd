@@ -32,10 +32,10 @@ func TestBackground(t *testing.T) {
 		alice := ability.TheAbilityOf(screenplay.ActorNamed("Alice").WhoCan(theAbility))
 		first, err := alice.ToGrantALease(t.Context(), time.Second)
 		require.NoError(t, err)
-		require.NoError(t, alice.ToKeepTheLeaseAlive(first))
+		require.NoError(t, alice.ToKeepTheLeaseAlive(t.Context(), first))
 		second, err := alice.ToGrantALease(t.Context(), time.Second)
 		require.NoError(t, err)
-		require.NoError(t, alice.ToKeepTheLeaseAlive(second))
+		require.NoError(t, alice.ToKeepTheLeaseAlive(t.Context(), second))
 		require.NoError(t, alice.ToWatch(t.Context(), "app/status", false))
 
 		time.Sleep(3 * time.Second)
@@ -62,7 +62,7 @@ func TestBackground(t *testing.T) {
 		alice := ability.TheAbilityOf(screenplay.ActorNamed("Alice").WhoCan(theAbility))
 		lease, err := alice.ToGrantALease(t.Context(), time.Second)
 		require.NoError(t, err)
-		require.NoError(t, alice.ToKeepTheLeaseAlive(lease))
+		require.NoError(t, alice.ToKeepTheLeaseAlive(t.Context(), lease))
 
 		require.NoError(t, theAbility.Forget())
 		require.NoError(t, theAbility.Forget())
@@ -79,7 +79,7 @@ func TestBackground(t *testing.T) {
 
 		lease, err := alice.ToGrantALease(t.Context(), time.Second)
 		require.NoError(t, err)
-		require.NoError(t, alice.ToKeepTheLeaseAlive(lease))
+		require.NoError(t, alice.ToKeepTheLeaseAlive(t.Context(), lease))
 
 		time.Sleep(3 * time.Second)
 		assert.False(t, isExpired(t, lease), "the lease is renewed in the background")

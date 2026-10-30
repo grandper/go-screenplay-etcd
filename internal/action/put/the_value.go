@@ -163,7 +163,7 @@ func (a *TheValueAction) PerformAs(theActor *screenplay.Actor) error {
 	}
 
 	if a.keptAlive && lease != clientv3.NoLease {
-		return theAbility.ToKeepTheLeaseAlive(lease)
+		return theAbility.ToKeepTheLeaseAlive(theActor.Context(), lease)
 	}
 
 	return nil

@@ -11,7 +11,7 @@ import (
 // ToRetrieveTheStatusOf retrieves the status of the member of the cluster
 // listening on the endpoint.
 func (o *Operations) ToRetrieveTheStatusOf(ctx context.Context, endpoint string) (*answer.EndpointStatus, error) {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (o *Operations) ToRetrieveTheStatusOf(ctx context.Context, endpoint string)
 // ToRetrieveTheAlarms retrieves the alarms raised by the members of the
 // cluster, none on a healthy cluster.
 func (o *Operations) ToRetrieveTheAlarms(ctx context.Context) ([]*answer.Alarm, error) {
-	client, err := o.client()
+	client, err := o.client(ctx)
 	if err != nil {
 		return nil, err
 	}

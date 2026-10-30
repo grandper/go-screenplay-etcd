@@ -12,9 +12,15 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/namespace"
+	"google.golang.org/grpc/connectivity"
 
 	"github.com/grandper/go-screenplay-etcd/etcd"
 )
+
+// defaultConnectionTimeout bounds the wait for the connection to the store
+// when the ability was given no timeout, so that an unreachable cluster is
+// reported instead of waited for indefinitely.
+const defaultConnectionTimeout = 5 * time.Second
 
 // UseETCD enables the actor to use an etcd store. The ability is configured
 // fluently, reading "use etcd with ...":
@@ -27,8 +33,9 @@ func UseETCD() *UseETCDAbility {
 // UseETCDAbility is the ability to use an etcd store.
 // It is safe for concurrent use: actions running in parallel (see
 // proceed.ConcurrentlyTo) can put, retrieve and remove keys without racing.
-// The client is created the first time the ability is used, so that a failure
-// to connect is reported by the action that needed it. Every operation carries
+// The client is created the first time the ability is used, and the connection
+// is waited for, so that a failure to connect is reported by the action that
+// needed it. Every operation carries
 // the actor's context, so that a deadline or a cancellation set on the actor
 // stops it. Its method set holds only its settings and Forget; the operations
 // are reached through TheAbilityOf, so a test cannot bypass the actor.
@@ -43,6 +50,9 @@ type UseETCDAbility struct {
 	certFile   string
 	keyFile    string
 	client     *clientv3.Client
+	// connected tells whether the connection of the client was seen ready
+	// once, so that it is waited for only on the first use.
+	connected bool
 
 	// background holds the goroutines the ability runs on behalf of the actor,
 	// such as the renewals of a lease kept alive or the watches; they stop when
@@ -142,6 +152,7 @@ func (a *UseETCDAbility) Forget() error {
 
 	err = errors.Join(err, a.client.Close())
 	a.client = nil
+	a.connected = false
 
 	return err
 }
@@ -152,8 +163,9 @@ func (a *UseETCDAbility) String() string {
 }
 
 // connect returns the client of the store, creating it from the endpoints on
-// the first call. The namespace, if any, is set on the client once.
-func (a *UseETCDAbility) connect() (*clientv3.Client, error) {
+// the first call and waiting for its connection to be ready. The namespace, if
+// any, is set on the client once.
+func (a *UseETCDAbility) connect(ctx context.Context) (*clientv3.Client, error) {
 	a.connecting.Lock()
 	defer a.connecting.Unlock()
 
@@ -175,6 +187,14 @@ func (a *UseETCDAbility) connect() (*clientv3.Client, error) {
 		a.client = client
 	}
 
+	if !a.connected {
+		if err := a.waitUntilConnected(ctx); err != nil {
+			return nil, err
+		}
+
+		a.connected = true
+	}
+
 	if a.namespace != "" {
 		a.client.KV = namespace.NewKV(a.client.KV, a.namespace)
 		a.client.Watcher = namespace.NewWatcher(a.client.Watcher, a.namespace)
@@ -183,6 +203,39 @@ func (a *UseETCDAbility) connect() (*clientv3.Client, error) {
 	}
 
 	return a.client, nil
+}
+
+// waitUntilConnected waits for the connection of the client to be ready, for
+// the timeout of the ability or, without one, for defaultConnectionTimeout.
+// The etcd client otherwise waits for the connection before every call, for
+// as long as the context allows, which can be forever. It fails with an error
+// wrapping etcd.ErrFailedToConnect and the error of the context.
+func (a *UseETCDAbility) waitUntilConnected(ctx context.Context) error {
+	timeout := a.timeout
+	if timeout <= 0 {
+		timeout = defaultConnectionTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	connection := a.client.ActiveConnection()
+	connection.Connect()
+
+	for {
+		state := connection.GetState()
+		if state == connectivity.Ready {
+			return nil
+		}
+
+		if state == connectivity.Shutdown {
+			return fmt.Errorf("%w: the client is closed", etcd.ErrFailedToConnect)
+		}
+
+		if !connection.WaitForStateChange(ctx, state) {
+			return fmt.Errorf("%w: %w", etcd.ErrFailedToConnect, ctx.Err())
+		}
+	}
 }
 
 // context bounds the context of an operation with the timeout of the ability,
@@ -217,13 +270,13 @@ type Operations struct {
 	ability *UseETCDAbility
 }
 
-// client returns the client of the store, connecting on the first call. When
-// the actor does not have the ability, it fails with
-// screenplay.ErrActorMissingAbility.
-func (o *Operations) client() (*clientv3.Client, error) {
+// client returns the client of the store, connecting on the first call, for as
+// long as the context allows. When the actor does not have the ability, it
+// fails with screenplay.ErrActorMissingAbility.
+func (o *Operations) client(ctx context.Context) (*clientv3.Client, error) {
 	if o.ability == nil {
 		return nil, screenplay.ErrActorMissingAbility
 	}
 
-	return o.ability.connect()
+	return o.ability.connect(ctx)
 }

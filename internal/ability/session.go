@@ -1,14 +1,16 @@
 package ability
 
 import (
+	"context"
+
 	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
 // session returns the session the locks and the elections of the actor share,
 // creating it on the first call. A session is a lease the client keeps alive:
 // when it ends, every lock and every leadership of the actor is released.
-func (o *Operations) session() (*concurrency.Session, error) {
-	client, err := o.client()
+func (o *Operations) session(ctx context.Context) (*concurrency.Session, error) {
+	client, err := o.client(ctx)
 	if err != nil {
 		return nil, err
 	}

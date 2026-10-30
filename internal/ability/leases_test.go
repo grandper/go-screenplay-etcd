@@ -69,7 +69,7 @@ func TestLeases(t *testing.T) {
 		lease, err := operations.ToGrantALease(t.Context(), time.Second)
 		require.NoError(t, err)
 
-		require.NoError(t, operations.ToKeepTheLeaseAlive(lease))
+		require.NoError(t, operations.ToKeepTheLeaseAlive(t.Context(), lease))
 
 		time.Sleep(4 * time.Second)
 		timeToLive, err := operations.ToRetrieveTheTimeToLive(t.Context(), lease)
@@ -92,6 +92,6 @@ func TestLeases(t *testing.T) {
 		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
 		_, err = noAbility.ToRetrieveTheTimeToLive(t.Context(), 1)
 		require.ErrorIs(t, err, screenplay.ErrActorMissingAbility)
-		require.ErrorIs(t, noAbility.ToKeepTheLeaseAlive(1), screenplay.ErrActorMissingAbility)
+		require.ErrorIs(t, noAbility.ToKeepTheLeaseAlive(t.Context(), 1), screenplay.ErrActorMissingAbility)
 	})
 }

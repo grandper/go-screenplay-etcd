@@ -51,8 +51,9 @@ var (
 	ErrNoEndpointProvided = errors.New("no etcd endpoint was provided to the ability")
 
 	// ErrFailedToConnect is wrapped by the error returned when the client of
-	// the etcd server cannot be created, or when a watch is canceled by the
-	// server.
+	// the etcd server cannot be created, when the connection is not ready
+	// within the timeout of the ability (five seconds without one), or when
+	// a watch is canceled by the server.
 	ErrFailedToConnect = errors.New("failed to connect to the etcd server")
 
 	// ErrFailedToLoadTheCertificates is wrapped by the error returned when the

@@ -10,6 +10,7 @@ import (
 	"github.com/grandper/go-screenplay/v2/screenplay"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/grandper/go-screenplay-etcd/ability/use"
 	"github.com/grandper/go-screenplay-etcd/action/put"
@@ -51,7 +52,34 @@ func TestETCD(t *testing.T) {
 		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
 
 		require.ErrorIs(t, err, context.DeadlineExceeded)
+		require.ErrorIs(t, err, etcd.ErrFailedToConnect)
 		assert.Less(t, time.Since(started), 5*time.Second)
+	})
+
+	t.Run("reports an unreachable cluster after five seconds without a timeout", func(t *testing.T) {
+		// Nothing listens on port 1, so the connection is never ready.
+		alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("127.0.0.1:1"))
+
+		started := time.Now()
+		err := alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
+
+		require.ErrorIs(t, err, etcd.ErrFailedToConnect)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		require.EqualError(t, err, "failed to connect to the etcd server: context deadline exceeded")
+		assert.GreaterOrEqual(t, time.Since(started), 5*time.Second)
+		assert.Less(t, time.Since(started), 15*time.Second)
+	})
+
+	t.Run("reports a client that was closed", func(t *testing.T) {
+		client, err := clientv3.New(clientv3.Config{Endpoints: []string{server.Endpoint()}})
+		require.NoError(t, err)
+		require.NoError(t, client.Close())
+		alice := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheClient(client))
+
+		err = alice.AttemptsTo(put.TheValue("v").ForTheKey("k"))
+
+		require.ErrorIs(t, err, etcd.ErrFailedToConnect)
+		require.EqualError(t, err, "failed to connect to the etcd server: the client is closed")
 	})
 
 	t.Run("stops an operation when the context of the actor is done", func(t *testing.T) {
