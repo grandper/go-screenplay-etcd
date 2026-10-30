@@ -13,6 +13,18 @@
 //			WithTimingOutAfter(5).Seconds(),
 //	)
 //
+// A client the test created is given with WithTheClient instead of the
+// endpoints. A cluster secured with TLS is given the authority that signed its
+// certificates with WithTheCertificateAuthority, and the certificate the actor
+// presents with WithTheClientCertificate closed by AndTheKey:
+//
+//	anActor := screenplay.ActorNamed("Alice").WhoCan(
+//		use.ETCD().
+//			WithTheEndpoints("etcd.example.com:2379").
+//			WithTheCertificateAuthority("ca.crt").
+//			WithTheClientCertificate("client.crt").AndTheKey("client.key"),
+//	)
+//
 // What the ability answers with, such as a key or an event, and the errors it
 // reports live in the etcd package.
 package use

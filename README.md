@@ -29,11 +29,14 @@ First, import the package:
 import (
     clientv3 "go.etcd.io/etcd/client/v3"
     "github.com/grandper/go-screenplay/v2/screenplay"
+    "github.com/grandper/go-screenplay/v2/action/keep"
     "github.com/grandper/go-screenplay/v2/action/see"
     "github.com/grandper/go-screenplay/v2/action/wait"
     "github.com/grandper/go-screenplay/v2/question/last"
     "github.com/grandper/go-screenplay/v2/question/number"
     "github.com/grandper/go-screenplay/v2/resolution/be"
+    "github.com/grandper/go-screenplay/v2/resolution/contain"
+    "github.com/grandper/go-screenplay/v2/resolution/length"
     "github.com/grandper/go-screenplay-etcd/ability/use"
     "github.com/grandper/go-screenplay-etcd/action/acquire"
     "github.com/grandper/go-screenplay-etcd/action/campaign"
@@ -62,7 +65,7 @@ Then create an actor who can use etcd, with the endpoints of the cluster in the 
 actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("localhost:2379"))
 actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints("etcd-1:2379", "etcd-2:2379", "etcd-3:2379"))
 ```
-The connection is opened the first time the actor uses the ability, so an unreachable cluster is reported by the first action, with an error wrapping `etcd.ErrFailedToConnect`. An actor given no endpoint fails every action with `etcd.ErrNoEndpointProvided`:
+The connection is opened the first time the actor uses the ability. An unreachable cluster makes the first action wait for the timeout of the ability (see `WithTimingOutAfter` below) or for the deadline of the actor's context, and fail with `context.DeadlineExceeded`; give the ability one of the two, otherwise the action waits for the cluster indefinitely. An actor given no endpoint fails every action with `etcd.ErrNoEndpointProvided`:
 ```go
 actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD())
 
@@ -106,7 +109,7 @@ actor := screenplay.ActorNamed("Alice").WhoCan(
 A file that cannot be read, or that holds no certificate, is reported by the first action, with an error wrapping both `etcd.ErrFailedToConnect` and `etcd.ErrFailedToLoadTheCertificates`:
 ```go
 err := actor.AttemptsTo(put.TheValue("ready").ForTheKey("app/status"))
-// failed to connect to the etcd server: failed to load the certificates: open client.crt: no such file or directory
+// failed to connect to the etcd server: failed to load the certificates: open ca.crt: no such file or directory
 ```
 
 > **_NOTE:_** When the actor exits (`actor.Exit()`), the ability forgets what it holds: the watches it started and the renewals of the leases it keeps alive stop, the locks it holds are released, the elections it campaigns in are resigned from, and the connection is closed, whether it was opened by the ability or given with `WithTheClient`.
@@ -153,7 +156,7 @@ err := actor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").
 err := actor.AttemptsTo(put.TheValue(password).ForTheKey("app/config/password").WhichShouldBeKeptSecret())
 // Alice attempts to put the value <secret> for the key "app/config/password"
 ```
-A key can be given a time to live with `ExpiringAfter` and a unit (`Seconds`, `Minutes` or `Milliseconds`, with their singular forms): the value is put with a lease, and the cluster removes the key when the lease expires. etcd counts in whole seconds, so the time is rounded up, and a cluster raises a short lease to the minimum it allows (two seconds with the defaults of the embedded server):
+A key can be given a time to live with `ExpiringAfter` and a unit (`Seconds`, `Minutes` or `Milliseconds`, with their singular forms): the value is put with a lease, and the cluster removes the key when the lease expires. etcd counts in whole seconds, so the time is rounded up, and a cluster raises a short lease to the minimum it allows (two seconds with the default settings of etcd):
 ```go
 err := actor.AttemptsTo(put.TheValue("held").ForTheKey("locks/batch-job").ExpiringAfter(10).Seconds())
 // Alice attempts to put the value "held" for the key "locks/batch-job" expiring after 10 seconds
@@ -352,9 +355,9 @@ err := actor.Should(see.The(ttl.OfTheKey("app/config/database")).Should(be.Zero[
 `keys.StartingWith(prefix)` answers with the keys starting with the prefix, a `[]string` in the order of the keys, and `values.OfTheKeysStartingWith(prefix)` with a `map[string]string` from each key to its value. The keys are counted with the core `number.Of`:
 ```go
 err := actor.Should(see.The(keys.StartingWith("app/config/")).Should(contain.Element("app/config/database")))
-// Alice should see that the keys starting with "app/config/" should contain the element "app/config/database"
+// Alice should see that the keys starting with "app/config/" should contain element "app/config/database"
 err := actor.Should(see.The(values.OfTheKeysStartingWith("app/config/")).Should(contain.Key[string, string]("app/config/database")))
-// Alice should see that the values of the keys starting with "app/config/" should contain the key "app/config/database"
+// Alice should see that the values of the keys starting with "app/config/" should contain key "app/config/database"
 err := actor.Should(see.The(number.Of(keys.StartingWith("app/config/"))).Should(be.EqualTo(2)))
 // Alice should see that the number of keys starting with "app/config/" should be equal to 2
 ```
@@ -403,7 +406,8 @@ err := actor.Should(see.The(leader.OfTheElection("primary-worker")).Should(be.Em
 ```go
 member, err := actor.AsksFor(status.OfTheEndpoint("localhost:2379")) // member is an *etcd.EndpointStatus
 // Alice asks for the status of the endpoint "localhost:2379"
-err = actor.Should(see.The(status.OfTheEndpoint("localhost:2379")).ShouldNotBe(be.Zero[*etcd.EndpointStatus]()))
+err = actor.Should(see.The(status.OfTheEndpoint("localhost:2379")).ShouldNot(be.Zero[*etcd.EndpointStatus]()))
+// Alice should see that the status of the endpoint "localhost:2379" should not be zero
 ```
 
 ### alarms.OfTheCluster
@@ -411,17 +415,6 @@ err = actor.Should(see.The(status.OfTheEndpoint("localhost:2379")).ShouldNotBe(b
 ```go
 err := actor.Should(see.The(alarms.OfTheCluster()).Should(be.Empty[[]*etcd.Alarm]()))
 // Alice should see that the alarms of the cluster should be empty
-```
-
-### Fake answers
-The `question/fixture` package builds the answers of `key.Named`, `events.OnTheKey` and `alarms.OfTheCluster` without a cluster, to test code that receives them:
-```go
-existing := fixture.CreateFakeExistingKey("app/status", "ready")   // a key holding the value
-missing := fixture.CreateFakeMissingKey("does/not/exist")           // a key that does not exist
-put := fixture.CreateFakePutEvent("app/status", "ready")            // a put of the value
-deleted := fixture.CreateFakeDeleteEvent("app/status", "ready")     // a delete by an actor, of a key that held the value
-expired := fixture.CreateFakeExpiryEvent("locks/batch-job", "held") // a delete by the expiry of the lease
-alarm := fixture.CreateFakeAlarm(memberID, "NOSPACE")               // an alarm raised by the member
 ```
 
 ## Resolutions
@@ -446,30 +439,14 @@ err := actor.Should(see.The(last.Of(events.OnTheKey("locks/batch-job"))).ShouldH
 // fails: Alice failed to see that the last of events on the key "locks/batch-job" should have been deleted by the expiry of its lease: it has been deleted by an actor, not by the expiry of its lease
 ```
 
-## Testing with an embedded etcd server
-The `fixture` package runs an in-process etcd server so scenarios can run without an external cluster. Both helpers take a `*testing.T` and register their own cleanup, so the server is stopped when the test ends. Every call starts its own server, on a free port of the loopback interface, so tests never share keys:
-```go
-// Runs an embedded server; the actor connects to its endpoint.
-server := fixture.RunETCDServer(t)
-actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
-
-// Runs an embedded server secured with mutual TLS, with certificates generated for the test.
-server := fixture.RunSecureETCDServer(t)
-actor := screenplay.ActorNamed("Alice").WhoCan(
-    use.ETCD().
-        WithTheEndpoints(server.Endpoint()).
-        WithTheCertificateAuthority(server.CertificateAuthority()).
-        WithTheClientCertificate(server.ClientCertificate()).AndTheKey(server.ClientKey()),
-)
-```
-The server keeps its data in the temporary directory of the test and writes its logs to a file there (`server.LogFile()`), so they never mix with the output of the test. `server.NewClient(t)` returns a `*clientv3.Client` connected to the server, closed when the test ends, to check the state of the cluster from outside the actor.
-
 ## Putting it all together
-A complete scenario, from spinning up the embedded server to asserting on the keys the actor watched:
+A complete scenario against a cluster listening on `localhost:2379`, from watching a key to asserting on the events the actor recorded. The namespace keeps the keys of the test apart from the ones of the other tests, and the actor exits when the test ends, so that its watch stops and its connection is closed:
 ```go
 func TestNoticesAConfigurationChange(t *testing.T) {
-    server := fixture.RunETCDServer(t)
-    actor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
+    actor := screenplay.ActorNamed("Alice").WhoCan(
+        use.ETCD().WithTheEndpoints("localhost:2379").WithTheNamespace(t.Name() + "/"),
+    )
+    t.Cleanup(func() { require.NoError(t, actor.Exit()) })
 
     require.NoError(t, actor.AttemptsTo(
         watch.TheKey("app/config/database"),

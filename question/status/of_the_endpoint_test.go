@@ -34,7 +34,7 @@ func TestOfTheEndpoint(t *testing.T) {
 
 	t.Run("can be asserted on", func(t *testing.T) {
 		require.NoError(t, alice.Should(
-			see.The(status.OfTheEndpoint(server.Endpoint())).ShouldNotBe(be.Zero[*etcd.EndpointStatus]()),
+			see.The(status.OfTheEndpoint(server.Endpoint())).ShouldNot(be.Zero[*etcd.EndpointStatus]()),
 		))
 	})
 

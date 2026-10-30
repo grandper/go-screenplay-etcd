@@ -1,8 +1,3 @@
-// Package fixture spins up an in-process etcd server, so that scenarios run
-// without an external cluster:
-//
-//	server := fixture.RunETCDServer(t)
-//	anActor := screenplay.ActorNamed("Alice").WhoCan(use.ETCD().WithTheEndpoints(server.Endpoint()))
 package fixture
 
 import (
